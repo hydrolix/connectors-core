@@ -1,35 +1,37 @@
 package io.hydrolix.connectors
 
-import java.time.Instant
-
-trait ValueType[T <: Any] {
+trait ValueType {
 }
 
-trait ScalarType[T <: Any] extends ValueType[T] {
+trait ScalarType extends ValueType {
 }
 
-trait ComplexType[T <: Any] extends ValueType[T] {
+trait ComplexType extends ValueType {
 }
 
-object BooleanType extends ScalarType[Boolean]
-object StringType extends ScalarType[String]
+object BooleanType extends ScalarType
+object StringType extends ScalarType
 
-object Int8Type extends ScalarType[Byte]
-object Int16Type extends ScalarType[Short]
-object Int32Type extends ScalarType[Int]
-object Int64Type extends ScalarType[Long]
+object Int8Type extends ScalarType
+object Int16Type extends ScalarType
+object Int32Type extends ScalarType
+object Int64Type extends ScalarType
 
-object Float32Type extends ScalarType[Float]
-object Float64Type extends ScalarType[Double]
-case class DecimalType(precision: Int, scale: Int) extends ScalarType[BigDecimal]
-object UInt8Type extends ScalarType[Short]
-object UInt16Type extends ScalarType[Int]
-object UInt32Type extends ScalarType[Long]
-object UInt64Type extends ScalarType[BigDecimal] {
+object Float32Type extends ScalarType
+object Float64Type extends ScalarType
+case class DecimalType(precision: Int, scale: Int) extends ScalarType
+object UInt8Type extends ScalarType
+object UInt16Type extends ScalarType
+object UInt32Type extends ScalarType
+object UInt64Type extends ScalarType {
   // TODO delegate whatever implementation ends up being needed to DecimalType(20,0)
 }
 
-case class TimestampType private (precision: Int) extends ScalarType[Instant] {
+/**
+ * [[java.time.Instant]] supports nanos in theory, but in practice, on many platforms the three least significant digits
+ * are always zeros, so we won't try to promise nanos support
+ */
+case class TimestampType private (precision: Int) extends ScalarType {
   require(precision >= 0, "Timestamp precision must be >= 0 (seconds) and <= 6 (microseconds)")
   require(precision <= 6, "Implementation limitation: maximum timestamp precision is 6 (microseconds)")
 }
@@ -39,17 +41,10 @@ object TimestampType {
   val Micros = TimestampType(6)
 }
 
-case class ArrayType[E <: Any](elementType: ValueType[E], 
-                          elementsNullable: Boolean = false) 
-  extends ComplexType[List[E]] 
+case class ArrayType(elementType: ValueType, elementsNullable: Boolean = false) extends ComplexType
 
-case class MapType[K <: Any, V <: Any](keyType: ValueType[K], 
-                                     valueType: ValueType[V], 
-                                valuesNullable: Boolean = false)
-  extends ComplexType[Map[K,V]]
+case class MapType(keyType: ValueType, valueType: ValueType, valuesNullable: Boolean = false) extends ComplexType
 
-case class StructField[T <: Any](name: String, 
-                               `type`: ValueType[T], 
-                             nullable: Boolean = false)
+case class StructField(name: String, `type`: ValueType, nullable: Boolean = false)
 
-case class StructType(fields: StructField[_]*)
+case class StructType(fields: StructField*)

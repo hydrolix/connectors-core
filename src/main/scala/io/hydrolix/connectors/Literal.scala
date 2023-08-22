@@ -3,14 +3,14 @@ package io.hydrolix.connectors
 
 import java.time.Instant
 
-trait Literal[T] extends Expr[T] {
+trait Literal[+T] extends Expr[T] {
   val value: T
-  val `type`: ValueType[T]
+  val `type`: ValueType
 
   override val children = Nil
 }
 object Literal {
-  def unapply[T](lit: Literal[T]): Option[(T, ValueType[T])] = {
+  def unapply[T](lit: Literal[T]): Option[(T, ValueType)] = {
     Some(lit.value, lit.`type`)
   }
 }
@@ -84,17 +84,21 @@ object Float64Literal {
   val `1d` = Float64Literal(1d)
 }
 
-case class TimestampLiteral(value: Instant, precision: Int = 3) extends Literal[Instant] {
-  override val `type` = TimestampType(precision)
+/**
+ * Note that since this contains an Instant, it declares its type as TimestampType(6) but consumers of the expression
+ * may want different precision.
+ */
+case class TimestampLiteral(value: Instant) extends Literal[Instant] {
+  override val `type` = TimestampType(6)
 }
 
 // TODO it'd be nice to try to infer elementType from E
-case class ListLiteral[E](value: List[E], elementType: ValueType[E], elementsNullable: Boolean = false) extends Literal[List[E]] {
+case class ListLiteral[E](value: List[E], elementType: ValueType, elementsNullable: Boolean = false) extends Literal[List[E]] {
   override val `type` = ArrayType(elementType, elementsNullable)
 }
 
 // TODO it'd be nice to try to infer keyType and valueType from K and V
-case class MapLiteral[K, V](value: Map[K, V], keyType: ValueType[K], valueType: ValueType[V], valuesNullable: Boolean = false) extends Literal[Map[K,V]] {
+case class MapLiteral[K, V](value: Map[K, V], keyType: ValueType, valueType: ValueType, valuesNullable: Boolean = false) extends Literal[Map[K,V]] {
   override val `type` = MapType(keyType, valueType, valuesNullable)
 }
 

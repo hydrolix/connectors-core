@@ -20,7 +20,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming
 case class HdxColumnInfo(name: String,
                       hdxType: HdxColumnDatatype,
                      nullable: Boolean,
-                       `type`: ValueType[_],
+                       `type`: ValueType,
                       indexed: Int)
 
 

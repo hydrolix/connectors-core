@@ -3,12 +3,12 @@ package io.hydrolix.connectors
 
 import java.time.Instant
 
-trait Expr[R <: Any] {
-  def `type`: ValueType[R]
+trait Expr[+R <: Any] {
+  def `type`: ValueType
   def children: List[Expr[_]]
 }
 
-case class GetField[T](name: String, `type`: ValueType[T]) extends Expr[T] {
+case class GetField[T](name: String, `type`: ValueType) extends Expr[T] {
   override val children = Nil
 }
 
@@ -18,7 +18,7 @@ case class IsNull[T](expr: Expr[T]) extends Expr[Boolean] {
 }
 
 object Now extends Expr[Instant] {
-  override val `type` = TimestampType.Micros
+  override val `type` = TimestampType.Millis
   override val children = Nil
 }
 
@@ -53,9 +53,9 @@ object Comparison {
   }
 
 
-  def unapply[T](expr: Expr[Boolean]): Option[(Expr[T], ComparisonOp, Expr[T])] = {
+  def unapply(expr: Expr[Boolean]): Option[(Expr[_], ComparisonOp, Expr[_])] = {
     expr match {
-      case cmp: Comparison[T] =>
+      case cmp: Comparison[_] =>
         Some(cmp.left, cmp.op, cmp.right)
       case _ =>
         None
