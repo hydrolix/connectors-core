@@ -15,7 +15,6 @@ name := "hydrolix-connectors-core"
 javacOptions := Seq("-source", "11", "-target", "11")
 
 libraryDependencies := Seq(
-  "io.substrait" % "core" % "0.14.1",
   "com.clickhouse" % "clickhouse-jdbc" % "0.4.6",
   "com.zaxxer" % "HikariCP" % "5.0.1",
   "com.google.guava" % "guava" % "32.0.0-jre",

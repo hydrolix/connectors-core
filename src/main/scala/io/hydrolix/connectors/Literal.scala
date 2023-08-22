@@ -1,0 +1,101 @@
+//noinspection TypeAnnotation
+package io.hydrolix.connectors
+
+import java.time.Instant
+
+trait Literal[T] extends Expr[T] {
+  val value: T
+  val `type`: ValueType[T]
+
+  override val children = Nil
+}
+object Literal {
+  def unapply[T](lit: Literal[T]): Option[(T, ValueType[T])] = {
+    Some(lit.value, lit.`type`)
+  }
+}
+
+case class BooleanLiteral private(value: Boolean) extends Literal[Boolean] {
+  override val `type` = BooleanType
+}
+object BooleanLiteral {
+  val True = BooleanLiteral(true)
+  val False = BooleanLiteral(false)
+}
+case class StringLiteral(value: String) extends Literal[String] {
+  override val `type` = StringType
+}
+
+case class Int8Literal(value: Byte) extends Literal[Byte] {
+  override val `type` = Int8Type
+}
+case class Int16Literal(value: Short) extends Literal[Short] {
+  override val `type` = Int16Type
+}
+case class Int32Literal(value: Int) extends Literal[Int] {
+  override val `type` = Int32Type
+}
+object Int32Literal {
+  val `0` = Int32Literal(0)
+  val `1` = Int32Literal(1)
+}
+case class Int64Literal(value: Long) extends Literal[Long] {
+  override val `type` = Int64Type
+}
+object Int64Literal {
+  val `0l` = Int64Literal(0L)
+  val `1l` = Int64Literal(1L)
+}
+case class UInt8Literal(value: Short) extends Literal[Short] {
+  override val `type` = UInt8Type
+}
+case class UInt16Literal(value: Int) extends Literal[Int] {
+  override val `type` = UInt16Type
+}
+case class UInt32Literal(value: Long) extends Literal[Long] {
+  override val `type` = UInt32Type
+}
+object UInt32Literal {
+  val `0u` = UInt32Literal(0)
+  val `1u` = UInt32Literal(1)
+}
+
+case class UInt64Literal(value: BigDecimal) extends Literal[BigDecimal] {
+  override val `type` = UInt64Type
+}
+object UInt64Literal {
+  val `0lu` = UInt64Literal(0)
+  val `1lu` = UInt64Literal(1)
+}
+
+case class Float32Literal(value: Float) extends Literal[Float] {
+  override val `type` = Float32Type
+}
+object Float32Literal {
+  val `0f` = Float32Literal(0f)
+  val `1f` = Float32Literal(1f)
+}
+
+case class Float64Literal(value: Double) extends Literal[Double] {
+  override val `type` = Float64Type
+}
+object Float64Literal {
+  val `0d` = Float64Literal(0d)
+  val `1d` = Float64Literal(1d)
+}
+
+case class TimestampLiteral(value: Instant, precision: Int = 3) extends Literal[Instant] {
+  override val `type` = TimestampType(precision)
+}
+
+// TODO it'd be nice to try to infer elementType from E
+case class ListLiteral[E](value: List[E], elementType: ValueType[E], elementsNullable: Boolean = false) extends Literal[List[E]] {
+  override val `type` = ArrayType(elementType, elementsNullable)
+}
+
+// TODO it'd be nice to try to infer keyType and valueType from K and V
+case class MapLiteral[K, V](value: Map[K, V], keyType: ValueType[K], valueType: ValueType[V], valuesNullable: Boolean = false) extends Literal[Map[K,V]] {
+  override val `type` = MapType(keyType, valueType, valuesNullable)
+}
+
+// TODO struct literal?

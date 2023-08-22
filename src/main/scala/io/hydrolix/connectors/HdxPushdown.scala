@@ -2,8 +2,6 @@ package io.hydrolix.connectors
 
 import java.time.Instant
 
-import io.substrait.`type`.{ImmutableType, Type}
-import io.substrait.expression.{Expression, FieldReference, ImmutableFieldReference}
 import org.slf4j.LoggerFactory
 
 /**
@@ -13,13 +11,7 @@ import org.slf4j.LoggerFactory
  */
 object HdxPushdown {
   private val log = LoggerFactory.getLogger(getClass)
-
-  private val LT = "<"
-  private val GT = ">"
-  private val NE = "<>"
-  private val EQ = "="
-  private val GE = ">="
-  private val LE = "<="
+  import ComparisonOp._
 
   /**
    * Note, [[Comparison.unapply]] assumes `shardOps` is a subset of `timeOps`; fix that if this assumption
@@ -28,35 +20,35 @@ object HdxPushdown {
   private val timeOps = Set(LT, LE, GT, GE, EQ, NE)
   private val shardOps = Set(EQ, NE)
   private val hdxOps = Map(
-    LT -> LT,
-    LE -> LE,
-    GT -> GT,
-    GE -> GE,
-    EQ -> EQ,
+    LT -> LT.getSymbol(),
+    LE -> LE.getSymbol(),
+    GT -> GT.getSymbol(),
+    GE -> GE.getSymbol(),
+    EQ -> EQ.getSymbol(),
     NE -> "!="
   )
 
-  private val hdxSimpleTypes = Set(
-    ImmutableType.Bool,
-    ImmutableType.Str,
-    ImmutableType.I8,
-    ImmutableType.I16,
-    ImmutableType.I32,
-    ImmutableType.I64,
-    ImmutableType.FP32,
-    ImmutableType.FP64,
+  private val hdxSimpleTypes: Set[ValueType[_]] = Set(
+    BooleanType,
+    StringType,
+    Int8Type,
+    Int16Type,
+    Int32Type,
+    Int64Type,
+    UInt8Type,
+    UInt32Type,
+    UInt64Type,
+    Float32Type,
+    Float64Type,
   )
 
-  private val allTimestamps = new AllLiterals(DataTypes.TimestampType)
-  private val allStrings = new AllLiterals(DataTypes.StringType)
+  private val allTimestamps = new AllLiterals(TimestampType.Seconds, TimestampType.Millis, TimestampType.Micros)
+  private val allStrings = new AllLiterals(StringType)
 
   /**
    * Tests whether a given predicate should be pushable for the given timestamp and shard key field names. Note that we
    * have no concept of a unique key, so we can never return 1 here. However, `prunePartition` should be able to
    * authoritatively prune particular partitions, since it will have their specific min/max timestamps and shard keys.
-   *
-   * TODO:
-   *  - Decide whether we need to care about [[org.apache.spark.sql.types.TimestampNTZType]]
    *
    * @param primaryKeyField name of the timestamp ("primary key") field for this table
    * @param mShardKeyField  name of the shard key field for this table
@@ -67,25 +59,25 @@ object HdxPushdown {
    *          - 2 if this predicate still needs to be evaluated again after scanning
    *          - 3 if this predicate is not pushable
    */
-  def pushable(primaryKeyField: String, mShardKeyField: Option[String], predicate: Expression, cols: Map[String, HdxColumnInfo]): Int = {
+  def pushable(primaryKeyField: String, mShardKeyField: Option[String], predicate: Expr[Boolean], cols: Map[String, HdxColumnInfo]): Int = {
     predicate match {
-      case Comparison(GetField(`primaryKeyField`), op, LiteralValue(_: Long, DataTypes.TimestampType)) if timeOps.contains(op) =>
+      case Comparison(GetField(`primaryKeyField`, TimestampType(_)), op, TimestampLiteral(_, _)) if timeOps.contains(op) =>
         // Comparison between the primary key field and a timestamp literal:
         // 2 because FilterInterpreter doesn't look at the primary key field
         2
-      case In(GetField(`primaryKeyField`), allTimestamps(_)) =>
+      case In(GetField(`primaryKeyField`, TimestampType(_)), allTimestamps(_)) =>
         // primaryKeyField IN (timestamp literals):
         // 2 because FilterInterpreter doesn't look at the primary key field
         2
-      case Comparison(GetField(field), op, LiteralValue(_: String, DataTypes.StringType)) if mShardKeyField.contains(field) && shardOps.contains(op) =>
+      case Comparison(GetField(field, StringType), op, StringLiteral(_)) if mShardKeyField.contains(field) && shardOps.contains(op) =>
         // shardKeyField == string or shardKeyField <> string
         // Note: this is a 2 even when shardKeyField == string because in the rare case of a hash collision we still
         // need to compare the raw strings.
         2
-      case In(GetField(field), allStrings(_)) if mShardKeyField.contains(field) =>
+      case In(GetField(field, StringType), allStrings(_)) if mShardKeyField.contains(field) =>
         // shardKeyField IN (string literals)
         2
-      case Comparison(GetField(f), op, LiteralValue(_, typ)) if hdxOps.contains(op) && hdxSimpleTypes.contains(typ) =>
+      case Comparison(GetField(f, _), op, Literal(_, typ)) if hdxOps.contains(op) && hdxSimpleTypes.contains(typ) =>
         // field op literal
         val hcol = cols.getOrElse(f, sys.error(s"No HdxColumnInfo for $f"))
         if (hcol.indexed == 2) {
@@ -95,15 +87,21 @@ object HdxPushdown {
         } else {
           2
         }
-      case not: Not =>
+      case Not(expr) =>
         // child is pushable
-        pushable(primaryKeyField, mShardKeyField, not.child(), cols)
-      case and: And =>
+        pushable(primaryKeyField, mShardKeyField, expr, cols)
+      case And(children) =>
         // max of childrens' pushability
-        pushable(primaryKeyField, mShardKeyField, and.left(), cols) max pushable(primaryKeyField, mShardKeyField, and.right(), cols)
-      case or: Or =>
+        val kps = children.map { child =>
+          pushable(primaryKeyField, mShardKeyField, child, cols)
+        }
+        kps.max
+      case Or(children) =>
         // max of childrens' pushability
-        pushable(primaryKeyField, mShardKeyField, or.left(), cols) max pushable(primaryKeyField, mShardKeyField, or.right(), cols)
+        val kps = children.map { child =>
+          pushable(primaryKeyField, mShardKeyField, child, cols)
+        }
+        kps.max
       case _ =>
         // Something else; it should be logged by the caller as non-pushable
         3
@@ -128,16 +126,15 @@ object HdxPushdown {
    */
   def prunePartition(primaryKeyField: String,
                      mShardKeyField: Option[String],
-                     predicate: Expression,
+                     predicate: Expr[Boolean],
                      partitionMin: Instant,
                      partitionMax: Instant,
                      partitionShardKey: String)
   : Boolean =
   {
     predicate match {
-      case Comparison(GetField(`primaryKeyField`), op, LiteralValue(micros: Long, DataTypes.TimestampType)) if timeOps.contains(op) =>
+      case Comparison(GetField(`primaryKeyField`, TimestampType(_)), op, TimestampLiteral(timestamp, _)) if timeOps.contains(op) =>
         // [`timestampField` <op> <timestampLiteral>], where op ∈ `timeOps`
-        val timestamp = microsToInstant(micros)
 
         op match {
           case EQ => // prune if timestamp IS OUTSIDE partition min/max
@@ -159,7 +156,7 @@ object HdxPushdown {
             sys.error(s"Unsupported comparison operator for timestamp: $op")
         }
 
-      case Comparison(GetField(field), op, LiteralValue(shardKey: String, DataTypes.StringType)) if mShardKeyField.contains(field) && shardOps.contains(op) =>
+      case Comparison(GetField(field, StringType), op, StringLiteral(shardKey)) if mShardKeyField.contains(field) && shardOps.contains(op) =>
         // [`shardKeyField` <op> <stringLiteral>], where op ∈ `shardOps`
         // TODO do we need to care about 42bc986dc5eec4d3 here?
         val hashed = WyHash(shardKey)
@@ -176,35 +173,37 @@ object HdxPushdown {
             sys.error(s"Unsupported comparison operator for shard key: $op")
         }
 
-      case In(f@GetField(`primaryKeyField`), allTimestamps(ts)) =>
+      case In(f@GetField(`primaryKeyField`, TimestampType(_)), allTimestamps(ts)) =>
         // [`timeField` IN (<timestampLiterals>)]
-        val comparisons = ts.map(Comparison(f, EQ, _))
+        val comparisons = ts.map(Equal(f, _))
         val results = comparisons.map(prunePartition(primaryKeyField, mShardKeyField, _, partitionMin, partitionMax, partitionShardKey))
         // This partition can be pruned if _every_ literal IS NOT within this partition's time bounds
         !results.contains(false)
 
-      case In(gf@GetField(f), allStrings(ts)) if mShardKeyField.contains(f) =>
+      case In(gf@GetField(f, StringType), allStrings(ts)) if mShardKeyField.contains(f) =>
         // [`shardKeyField` IN (<stringLiterals>)]
-        val comparisons = ts.map(Comparison(gf, EQ, _))
+        val comparisons = ts.map(Equal(gf, _))
         val results = comparisons.map(prunePartition(primaryKeyField, mShardKeyField, _, partitionMin, partitionMax, partitionShardKey))
         // This partition can be pruned if _every_ literal IS NOT this partition's shard key
         // TODO do we need care about hash collisions here? It might depend on whether op is EQ or NE
         !results.contains(false)
 
-      case and: And =>
-        val pruneLeft = prunePartition(primaryKeyField, mShardKeyField, and.left(), partitionMin, partitionMax, partitionShardKey)
-        val pruneRight = prunePartition(primaryKeyField, mShardKeyField, and.right(), partitionMin, partitionMax, partitionShardKey)
+      case And(children) =>
+        val kps = children.map { child =>
+          prunePartition(primaryKeyField, mShardKeyField, child, partitionMin, partitionMax, partitionShardKey)
+        }
 
-        pruneLeft || pruneRight // TODO!!
+        kps.contains(true) // TODO!!
 
-      case or: Or =>
-        val pruneLeft = prunePartition(primaryKeyField, mShardKeyField, or.left(), partitionMin, partitionMax, partitionShardKey)
-        val pruneRight = prunePartition(primaryKeyField, mShardKeyField, or.right(), partitionMin, partitionMax, partitionShardKey)
+      case Or(children) =>
+        val kps = children.map { child =>
+          prunePartition(primaryKeyField, mShardKeyField, child, partitionMin, partitionMax, partitionShardKey)
+        }
 
-        pruneLeft && pruneRight // TODO!!
+        !(kps.contains(false)) // TODO!!
 
-      case not: Not =>
-        val pruneChild = prunePartition(primaryKeyField, mShardKeyField, not.child(), partitionMin, partitionMax, partitionShardKey)
+      case Not(expr) =>
+        val pruneChild = prunePartition(primaryKeyField, mShardKeyField, expr, partitionMin, partitionMax, partitionShardKey)
         !pruneChild // TODO!!
 
       case _ =>
@@ -217,9 +216,9 @@ object HdxPushdown {
    *
    * @return Some(s) if the predicate was rendered successfully; None if not
    */
-  def renderHdxFilterExpr(expr: Expression, primaryKeyField: String, cols: Map[String, HdxColumnInfo]): Option[String] = {
+  def renderHdxFilterExpr(expr: Expr[Boolean], primaryKeyField: String, cols: Map[String, HdxColumnInfo]): Option[String] = {
     expr match {
-      case Comparison(GetField(field), op, lit@LiteralValue(_, typ)) if timeOps.contains(op) && hdxSimpleTypes.contains(typ) =>
+      case Comparison(GetField(field, typ), op, lit @ Literal(_, _)) if timeOps.contains(op) && hdxSimpleTypes.contains(typ) =>
         val hcol = cols.getOrElse(field, sys.error(s"No HdxColumnInfo for $field"))
         val hdxOp = hdxOps.getOrElse(op, sys.error(s"No hydrolix operator for Spark operator $op"))
 
@@ -235,7 +234,7 @@ object HdxPushdown {
           None
         }
 
-      case Comparison(GetField(field), op, LiteralValue(lit, DataTypes.TimestampType)) if timeOps.contains(op) =>
+      case Comparison(GetField(field, TimestampType(_)), op, TimestampLiteral(lit, _)) if timeOps.contains(op) =>
         if (field == primaryKeyField) {
           // FilterInterpreter specifically doesn't try to use the primary key field
           None
@@ -244,8 +243,7 @@ object HdxPushdown {
           val hdxOp = hdxOps.getOrElse(op, sys.error(s"No hydrolix operator for Spark operator $op"))
           val hcol = cols.getOrElse(field, sys.error(s"No HdxColumnInfo for $field"))
 
-          val t = microsToInstant(lit.asInstanceOf[Long])
-          val long = if (hcol.hdxType.`type` == HdxValueType.DateTime64) t.toEpochMilli else t.getEpochSecond
+          val long = if (hcol.hdxType.`type` == HdxValueType.DateTime64) lit.toEpochMilli else lit.getEpochSecond
 
           if (hcol.indexed == 2) {
             Some(s""""$field" $hdxOp '$long'""")
@@ -254,19 +252,19 @@ object HdxPushdown {
           }
         }
 
-      case and: And =>
-        val results = and.children().map(kid => renderHdxFilterExpr(kid, primaryKeyField, cols))
+      case And(children) =>
+        val results = children.map(kid => renderHdxFilterExpr(kid, primaryKeyField, cols))
         if (results.contains(None)) None else Some(results.flatten.mkString("(", " AND ", ")"))
 
-      case or: Or =>
-        val results = or.children().map(kid => renderHdxFilterExpr(kid, primaryKeyField, cols))
+      case Or(children) =>
+        val results = children.map(kid => renderHdxFilterExpr(kid, primaryKeyField, cols))
         if (results.contains(None)) None else Some(results.flatten.mkString("(", " OR ", ")"))
 
-      case not: Not =>
-        not.child() match {
-          case Comparison(l, EQ, r) =>
+      case Not(child) =>
+        child match {
+          case Comparison(l, ComparisonOp.EQ, r) =>
             // Spark turns `foo <> bar` into `NOT (foo = bar)`, put it back so FilterInterpreter likes it better
-            renderHdxFilterExpr(Comparison(l, NE, r), primaryKeyField, cols)
+            renderHdxFilterExpr(Comparison(l, ComparisonOp.NE, r), primaryKeyField, cols)
           case other =>
             renderHdxFilterExpr(other, primaryKeyField, cols)
               .map(res => s"NOT ($res)")
@@ -277,83 +275,16 @@ object HdxPushdown {
     }
   }
 
-  def pushableAggs(aggregation: Aggregation, primaryKeyField: String): List[(AggregateFunc, StructField)] = {
-    if (aggregation.groupByExpressions().nonEmpty) return Nil
-
-    aggregation.aggregateExpressions().flatMap {
-      case cs: CountStar => Some(cs -> StructField("COUNT(*)", DataTypes.LongType))
-      case mf @ MinField(`primaryKeyField`) => Some(mf -> StructField(s"MIN($primaryKeyField)", DataTypes.TimestampType))
-      case mf @ MaxField(`primaryKeyField`) => Some(mf -> StructField(s"MAX($primaryKeyField)", DataTypes.TimestampType))
+  /**
+   * Given an `aggregation` expression, if it's pushable, return a StructField with a suggested name for the
+   * expression, along with its value type.
+   */
+  def pushableAgg[T : Numeric](aggregation: AggregateFun[T], primaryKeyField: String): Option[StructField[_]] = {
+    aggregation match {
+      case CountStar => Some(StructField("COUNT(*)", Int64Type, nullable = false))
+      case Min(GetField(`primaryKeyField`, ttype @ TimestampType(_))) => Some(StructField(s"MIN($primaryKeyField)", ttype, nullable = true))
+      case Max(GetField(`primaryKeyField`, ttype @ TimestampType(_))) => Some(StructField(s"MAX($primaryKeyField)", ttype, nullable = true))
       case _ => None
-    }.toList
-  }
-
-  /**
-   * Looks at an expression, and if it's a Min(FieldReference(`field`)) where `field` is single-valued, returns `field`.
-   */
-  private object MinField {
-    def unapply(expr: Expression): Option[String] = {
-      expr match {
-        case min: Min =>
-          min.children() match {
-            case Array(FieldReference(Seq(fieldName))) => Some(fieldName)
-            case _ => None
-          }
-        case _ => None
-      }
-    }
-  }
-
-  /**
-   * Looks at an expression, and if it's a Max(FieldReference(`field`)) where `field` is single-valued, returns `field`.
-   */
-  private object MaxField {
-    def unapply(expr: Expression): Option[String] = {
-      expr match {
-        case max: Max =>
-          max.children() match {
-            case Array(FieldReference(Seq(fieldName))) => Some(fieldName)
-            case _ => None
-          }
-        case _ => None
-      }
-    }
-  }
-
-  /**
-   * Looks at an expression and, if it's a binary comparison operator of the form `<left> <op> <right>`
-   * where `op` is one of [[timeOps]], returns a tuple of (`left`, `op`, `right`).
-   *
-   * Note that this is also used to match shard key comparisons, but the caller needs to check that `op` is in
-   * [[shardOps]].
-   */
-  object Comparison {
-    def apply(l: Expression, op: String, r: Expression) = new Predicate(op, Array(l, r))
-    def unapply(expr: Expression): Option[(Expression, String, Expression)] = {
-      val kids = expr.children()
-      expr match {
-        case gse: GeneralScalarExpression if timeOps.contains(gse.name()) && kids.size == 2 =>
-          // TODO this assumes timeOps is a superset of shardOps, change it if that's no longer the case
-          Some(kids(0), gse.name(), kids(1))
-        case _ => None
-      }
-    }
-  }
-
-  /**
-   * Looks at an expression and, if it's of the form `<left> IN (<rights>)` where `rights` has at least one value,
-   * returns a tuple of (`left`, `rights`).
-   *
-   * Note that this assumes `foo IN ()` would have already been optimized away as tautological.
-   */
-  private object In {
-    def unapply(expr: Expression): Option[(Expression, List[Expression])] = {
-      val kids = expr.children()
-      expr match {
-        case gse: GeneralScalarExpression if gse.name() == "IN" && kids.size >= 2 =>
-          Some(kids(0) -> kids.drop(1).toList)
-        case _ => None
-      }
     }
   }
 
@@ -364,48 +295,18 @@ object HdxPushdown {
    * Returns nothing if:
    *  - the list is empty
    *  - ANY value is not a literal
-   *  - ANY value is a literal, but not of the `desired` type
+   *  - ANY value is a literal, but not of the `desiredTypes` type
    *
-   * @param desired the type to search for
+   * @param desiredTypes the type(s) to search for
    */
-  private class AllLiterals(desired: Type) {
-    def unapply(expressions: List[Expression]): Option[List[Expression.Literal]] = {
+  private class AllLiterals(desiredTypes: ValueType[_]*) {
+    private val desiredSet = desiredTypes.toSet
+    def unapply(expressions: List[Expr[_]]): Option[List[Literal[_]]] = {
       val literals = expressions.flatMap {
-        case lit: Expression.Literal if lit == desired => Some(lit)
+        case lit: Literal[_] if desiredSet.contains(lit.`type`) => Some(lit)
         case _ => None
       }
       if (expressions.nonEmpty && literals.size == expressions.size) Some(literals) else None
-    }
-  }
-
-  /**
-   * Looks at an expression, and if it's a `FieldReference(<ss>)` (where `ss` is a single string),
-   * returns that string, otherwise returns nothing.
-   */
-  object GetField {
-    def apply(f: String): FieldReference = ImmutableFieldReference.builder().addSegments())
-    def unapply(expr: Expression): Option[String] = {
-      expr match {
-        case FieldReference(Seq(f)) => Some(f)
-        case _ => None
-      }
-    }
-  }
-
-  object Literal {
-    def apply(value: Any): LiteralValue[_] = {
-      // TODO maps too?
-      value match {
-        case b: Boolean => LiteralValue(b, DataTypes.BooleanType)
-        case b: Byte => LiteralValue(b, DataTypes.ByteType)
-        case i: Int => LiteralValue(i, DataTypes.IntegerType)
-        case l: Long => LiteralValue(l, DataTypes.LongType)
-        case f: Float => LiteralValue(f, DataTypes.FloatType)
-        case d: Double => LiteralValue(d, DataTypes.DoubleType)
-        case s: String => LiteralValue(s, DataTypes.StringType)
-        case i: Instant => LiteralValue(DateTimeUtils.instantToMicros(i), DataTypes.TimestampType)
-        case _ => sys.error(s"Don't know how to translate $value into a LiteralValue[_]")
-      }
     }
   }
 }

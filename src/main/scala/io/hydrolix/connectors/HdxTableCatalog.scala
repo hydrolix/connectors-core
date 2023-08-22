@@ -1,11 +1,10 @@
 package io.hydrolix.connectors
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.IterableHasAsJava
 
-import io.substrait.`type`.{NamedStruct, Type}
 import org.slf4j.LoggerFactory
-import HdxConnectionInfo._
+
+import io.hydrolix.connectors.HdxConnectionInfo._
 
 final class HdxTableCatalog {
   private val log = LoggerFactory.getLogger(getClass)
@@ -24,7 +23,7 @@ final class HdxTableCatalog {
       val view = api.defaultView(db, table)
 
       view.settings.outputColumns.map { col =>
-        val stype = Types.hdxToSubstrait(col.datatype)
+        val stype = Types.hdxToValueType(col.datatype)
 
         HdxColumnInfo(
           col.name,
@@ -68,21 +67,18 @@ final class HdxTableCatalog {
     }
   }
 
-  private def inferSchema(options: Map[String, String]): NamedStruct = {
+  private def inferSchema(options: Map[String, String]): StructType = {
     val db = options.getOrElse(OPT_PROJECT_NAME, sys.error(s"${OPT_PROJECT_NAME}is required"))
     val table = options.getOrElse(OPT_TABLE_NAME, sys.error(s"${OPT_TABLE_NAME}is required"))
 
     val cols = columns(db, table)
 
-    NamedStruct.of(
-      cols.map(_.name).asJava,
-      Type.Struct.builder()
-        .fields(cols.map(_.substraitType).asJava)
-        .build()
-    )
+    StructType(cols.map { col =>
+      StructField(col.name, col.`type`, false) // TODO nullability?
+    })
   }
 
-  private def getTable(schema: NamedStruct, properties: Map[String, String]): HdxTable = {
+  private def getTable(schema: StructType, properties: Map[String, String]): HdxTable = {
     val db = properties.getOrElse(OPT_PROJECT_NAME, sys.error(s"${OPT_PROJECT_NAME}is required"))
     val table = properties.getOrElse(OPT_TABLE_NAME, sys.error(s"${OPT_TABLE_NAME}is required"))
 
