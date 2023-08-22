@@ -4,6 +4,9 @@ import java.time.Instant
 
 import org.slf4j.LoggerFactory
 
+import io.hydrolix.connectors.`type`._
+import io.hydrolix.connectors.expr._
+
 /**
  * TODO:
  *  - see if multi-part names will ever show up (e.g. in a join?); that would break [[GetField]] but hopefully only

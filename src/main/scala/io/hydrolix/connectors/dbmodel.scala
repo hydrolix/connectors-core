@@ -7,6 +7,8 @@ import com.fasterxml.jackson.annotation.{JsonFormat, OptBoolean}
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy
 import com.fasterxml.jackson.databind.annotation.JsonNaming
 
+import io.hydrolix.connectors.`type`.ValueType
+
 /*
  * These are Scala representations of the metadata visible from a Hydrolix JDBC connection.
  */

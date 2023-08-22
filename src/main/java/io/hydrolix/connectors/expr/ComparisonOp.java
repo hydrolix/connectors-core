@@ -1,4 +1,4 @@
-package io.hydrolix.connectors;
+package io.hydrolix.connectors.expr;
 
 public enum ComparisonOp {
     LT("<"),

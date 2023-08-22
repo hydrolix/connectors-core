@@ -1,7 +1,9 @@
 //noinspection TypeAnnotation
-package io.hydrolix.connectors
+package io.hydrolix.connectors.expr
 
 import java.time.Instant
+
+import io.hydrolix.connectors.`type`._
 
 trait Literal[+T] extends Expr[T] {
   val value: T
@@ -92,14 +94,12 @@ case class TimestampLiteral(value: Instant) extends Literal[Instant] {
   override val `type` = TimestampType(6)
 }
 
-// TODO it'd be nice to try to infer elementType from E
-case class ListLiteral[E](value: List[E], elementType: ValueType, elementsNullable: Boolean = false) extends Literal[List[E]] {
+case class ArrayLiteral[E](value: List[E], elementType: ValueType, elementsNullable: Boolean = false) extends Literal[List[E]] {
   override val `type` = ArrayType(elementType, elementsNullable)
 }
 
-// TODO it'd be nice to try to infer keyType and valueType from K and V
 case class MapLiteral[K, V](value: Map[K, V], keyType: ValueType, valueType: ValueType, valuesNullable: Boolean = false) extends Literal[Map[K,V]] {
   override val `type` = MapType(keyType, valueType, valuesNullable)
 }
 
-// TODO struct literal?
+case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Literal[Map[String, Any]]

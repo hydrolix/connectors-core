@@ -1,5 +1,7 @@
 package io.hydrolix.connectors
 
+import io.hydrolix.connectors.`type`._
+
 object Types {
   private val arrayR = """array\((.*?)\)""".r
   private val mapR = """map\((.*?),\s*(.*?)\)""".r

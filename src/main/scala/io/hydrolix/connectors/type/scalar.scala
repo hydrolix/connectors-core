@@ -1,13 +1,6 @@
-package io.hydrolix.connectors
+package io.hydrolix.connectors.`type`
 
-trait ValueType {
-}
-
-trait ScalarType extends ValueType {
-}
-
-trait ComplexType extends ValueType {
-}
+sealed trait ScalarType extends ValueType
 
 object BooleanType extends ScalarType
 object StringType extends ScalarType
@@ -16,16 +9,16 @@ object Int8Type extends ScalarType
 object Int16Type extends ScalarType
 object Int32Type extends ScalarType
 object Int64Type extends ScalarType
-
-object Float32Type extends ScalarType
-object Float64Type extends ScalarType
-case class DecimalType(precision: Int, scale: Int) extends ScalarType
 object UInt8Type extends ScalarType
 object UInt16Type extends ScalarType
 object UInt32Type extends ScalarType
 object UInt64Type extends ScalarType {
   // TODO delegate whatever implementation ends up being needed to DecimalType(20,0)
 }
+
+object Float32Type extends ScalarType
+object Float64Type extends ScalarType
+case class DecimalType(precision: Int, scale: Int) extends ScalarType
 
 /**
  * [[java.time.Instant]] supports nanos in theory, but in practice, on many platforms the three least significant digits
@@ -40,11 +33,3 @@ object TimestampType {
   val Millis = TimestampType(3)
   val Micros = TimestampType(6)
 }
-
-case class ArrayType(elementType: ValueType, elementsNullable: Boolean = false) extends ComplexType
-
-case class MapType(keyType: ValueType, valueType: ValueType, valuesNullable: Boolean = false) extends ComplexType
-
-case class StructField(name: String, `type`: ValueType, nullable: Boolean = false)
-
-case class StructType(fields: StructField*)
