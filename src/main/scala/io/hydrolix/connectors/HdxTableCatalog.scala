@@ -101,7 +101,7 @@ final class HdxTableCatalog {
   }
 
   def listTables(namespace: List[String]): List[List[String]] = {
-    assert(namespace.length == 2, "Namespace paths must have exactly two elements (DB name and table name)")
+    assert(namespace.length == 1, "Namespace paths must have exactly one element (DB name)")
     api.tables(namespace.head).map { ht =>
       namespace :+ ht.name
     }

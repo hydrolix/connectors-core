@@ -1,14 +1,15 @@
 ThisBuild / organization := "io.hydrolix"
-ThisBuild / version := "1.2.0-SNAPSHOT"
+ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / organizationHomepage := Some(url("https://hydrolix.io/"))
 ThisBuild / homepage := Some(url("https://github.com/hydrolix/connectors-core/"))
 ThisBuild / licenses := List(
   "Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"),
   "Proprietary" -> new URL("https://github.com/hydrolix/connectors-core/#proprietary"),
 )
-//ThisBuild / crossScalaVersions := List("2.12.18", "2.13.11")
 
 scalaVersion := "2.13.11"
+
+crossScalaVersions := List("2.12.18", "2.13.11")
 
 name := "hydrolix-connectors-core"
 
