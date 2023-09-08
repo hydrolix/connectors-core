@@ -1,5 +1,5 @@
 package io.hydrolix.connectors
 
-package object `type` {
+package object types {
   trait ValueType
 }

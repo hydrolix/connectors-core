@@ -2,7 +2,7 @@ package io.hydrolix.connectors
 
 import java.time.Instant
 
-import io.hydrolix.connectors.`type`.{TimestampType, ValueType}
+import io.hydrolix.connectors.types.{TimestampType, ValueType}
 
 package object expr {
   trait Expr[+R <: Any] {

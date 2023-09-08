@@ -1,6 +1,6 @@
 package io.hydrolix.connectors.expr
 
-import io.hydrolix.connectors.`type`.{BooleanType, ValueType}
+import io.hydrolix.connectors.types.{BooleanType, ValueType}
 
 case class GetField[T](name: String, `type`: ValueType) extends Expr[T] {
   override val children = Nil

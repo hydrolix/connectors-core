@@ -1,6 +1,6 @@
 package io.hydrolix.connectors
 
-import io.hydrolix.connectors.`type`._
+import io.hydrolix.connectors.types._
 
 object Types {
   private val arrayR = """array\((.*?)\)""".r

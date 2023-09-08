@@ -1,6 +1,6 @@
 package io.hydrolix.connectors.expr
 
-import io.hydrolix.connectors.`type`.Int64Type
+import io.hydrolix.connectors.types.Int64Type
 
 // TODO Min, Max and Sum should be nullable but we don't have such a type yet
 abstract class AggregateFun[T] extends Expr[T] {

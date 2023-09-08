@@ -5,7 +5,7 @@ import scala.collection.mutable
 import org.slf4j.LoggerFactory
 
 import io.hydrolix.connectors.HdxConnectionInfo._
-import io.hydrolix.connectors.`type`.{StructField, StructType}
+import io.hydrolix.connectors.types.{StructField, StructType}
 
 final class HdxTableCatalog {
   private val log = LoggerFactory.getLogger(getClass)

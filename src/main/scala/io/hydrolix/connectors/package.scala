@@ -1,5 +1,6 @@
 package io.hydrolix
 
+import java.time.Instant
 import scala.sys.process.{Process, ProcessIO}
 
 import com.google.common.io.ByteStreams
@@ -68,4 +69,15 @@ package object connectors {
     }
   }
 
+  def instantToMicros(inst: Instant): Long = {
+    val sec = inst.getEpochSecond
+    val nano = inst.getNano
+    (sec * 1000000) + (nano / 1000)
+  }
+
+  def microsToInstant(micros: Long): Instant = {
+    val sec = micros / 1000000
+    val micro = micros % 1000000
+    Instant.ofEpochSecond(sec, micro * 1000)
+  }
 }

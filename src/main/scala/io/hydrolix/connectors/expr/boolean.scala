@@ -1,7 +1,7 @@
 //noinspection TypeAnnotation
 package io.hydrolix.connectors.expr
 
-import io.hydrolix.connectors.`type`.BooleanType
+import io.hydrolix.connectors.types.BooleanType
 
 case class Not(expr: Expr[Boolean]) extends Expr[Boolean] {
   override val `type` = BooleanType

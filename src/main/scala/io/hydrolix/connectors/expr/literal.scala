@@ -3,7 +3,7 @@ package io.hydrolix.connectors.expr
 
 import java.time.Instant
 
-import io.hydrolix.connectors.`type`._
+import io.hydrolix.connectors.types._
 
 trait Literal[+T] extends Expr[T] {
   val value: T

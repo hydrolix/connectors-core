@@ -1,4 +1,4 @@
-package io.hydrolix.connectors.`type`
+package io.hydrolix.connectors.types
 
 sealed trait ScalarType extends ValueType
 
