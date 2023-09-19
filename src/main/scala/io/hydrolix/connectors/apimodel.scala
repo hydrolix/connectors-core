@@ -1,14 +1,14 @@
 package io.hydrolix.connectors
 
-import java.net.{URI, URL}
-import java.time.Instant
-import java.util.UUID
-
 import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy
 import com.fasterxml.jackson.databind.annotation.JsonNaming
+
+import java.net.{URI, URL}
+import java.time.Instant
+import java.util.UUID
 
 /*
  * These are Scala representations of the JSON schema returned by the Hydrolix API.
@@ -73,7 +73,13 @@ case class HdxTableSettings(stream: HdxTableStreamSettings,
                      maxFutureDays: Int,
                            summary: Option[HdxTableSettingsSummary],
                              scale: Option[HdxTableSettingsScale],
-                   maxRequestBytes: Option[Long])
+                   maxRequestBytes: Option[Long],
+                        storageMap: Option[HdxTableSettingsStorageMap])
+
+@JsonNaming(classOf[SnakeCaseStrategy])
+case class HdxTableSettingsStorageMap(defaultStorageId: UUID,
+                                            columnName: String,
+                                    columnValueMapping: Map[UUID, List[JsonNode]])
 
 @JsonNaming(classOf[SnakeCaseStrategy])
 case class HdxTableSettingsSummary(sql: String, enabled: Boolean)
