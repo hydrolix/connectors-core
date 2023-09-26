@@ -1,11 +1,14 @@
 package io.hydrolix
 
 import java.time.Instant
+import java.util.UUID
 import scala.sys.process.{Process, ProcessIO}
 
 import com.google.common.io.ByteStreams
 
 package object connectors {
+  val uuid0 = UUID.fromString("00000000-0000-0000-0000-000000000000")
+
   case class NoSuchDatabaseException(db: String) extends RuntimeException(s"No such database: $db")
   case class NoSuchTableException(db: String, table: String) extends RuntimeException(s"No such table: $db.$table")
 

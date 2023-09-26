@@ -1,10 +1,12 @@
 package io.hydrolix.connectors
 
-import io.hydrolix.connectors.types.StructType
+import java.util.UUID
+
 import io.hydrolix.connectors.expr.Expr
+import io.hydrolix.connectors.types.StructType
 
 case class HdxTable(info: HdxConnectionInfo,
-                 storage: HdxStorageSettings,
+                storages: Map[UUID, HdxStorageSettings],
                    ident: List[String],
                   schema: StructType,
          primaryKeyField: String,
@@ -15,6 +17,7 @@ case class HdxTable(info: HdxConnectionInfo,
 
 case class HdxPartitionScanPlan(db: String,
                              table: String,
+                         storageId: UUID,
                      partitionPath: String,
                             schema: StructType,
                             pushed: List[Expr[Boolean]],

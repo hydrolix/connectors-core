@@ -1,5 +1,6 @@
 package io.hydrolix.connectors
 
+import java.util.UUID
 import scala.collection.mutable
 
 import org.slf4j.LoggerFactory
@@ -14,7 +15,7 @@ final class HdxTableCatalog {
   private var info: HdxConnectionInfo = _
   private var api: HdxApiSession = _
   private var jdbc: HdxJdbcSession = _
-  private var storageSettings: HdxStorageSettings = _
+  private var storageSettings: Map[UUID, HdxStorageSettings] = _
   private var queryMode: HdxQueryMode = _
 
   private val columnsCache = mutable.HashMap[(String, String), List[HdxColumnInfo]]()
@@ -51,18 +52,17 @@ final class HdxTableCatalog {
 
     // TODO this is ugly
     if ((bn ++ bp ++ r ++ c).size == 4) {
-      this.storageSettings = HdxStorageSettings(isDefault = true, bn.get, bp.get, r.get, c.get)
+      this.storageSettings = Map(uuid0 -> HdxStorageSettings(true, bn.get, bp.get, r.get, c.get))
     } else {
       val storages = api.storages()
       if (storages.isEmpty) {
         sys.error("No storages available from API, and no storage settings provided in configuration")
       } else {
-        val defaults = storages.find(_.settings.isDefault)
-        if (defaults.size == 1) {
-          this.storageSettings = defaults.head.settings
+        val storages = api.storages().map(storage => storage.uuid -> storage.settings).toMap
+        if (storages.isEmpty) {
+          sys.error("No storages available from API, and no storage settings provided in configuration")
         } else {
-          log.warn(s"${defaults.size} default storages in API; arbitrarily using the first non-default one")
-          this.storageSettings = storages.head.settings
+          this.storageSettings = storages
         }
       }
     }

@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.hydrolix"
-ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / version := "0.2.0-SNAPSHOT"
 ThisBuild / organizationHomepage := Some(url("https://hydrolix.io/"))
 ThisBuild / homepage := Some(url("https://github.com/hydrolix/connectors-core/"))
 ThisBuild / licenses := List(
@@ -7,14 +7,15 @@ ThisBuild / licenses := List(
   "Proprietary" -> new URL("https://github.com/hydrolix/connectors-core/#proprietary"),
 )
 
-scalaVersion := "2.13.11"
+scalaVersion := "2.13.12"
 
-crossScalaVersions := List("2.12.18", "2.13.11")
+crossScalaVersions := List("2.12.18", "2.13.12")
 
 name := "hydrolix-connectors-core"
 
 javacOptions := Seq("-source", "11", "-target", "11")
 
+//noinspection SpellCheckingInspection
 libraryDependencies := Seq(
   "com.clickhouse" % "clickhouse-jdbc" % "0.4.6",
   "com.zaxxer" % "HikariCP" % "5.0.1",
