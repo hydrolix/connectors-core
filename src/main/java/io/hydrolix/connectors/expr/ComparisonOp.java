@@ -1,5 +1,11 @@
 package io.hydrolix.connectors.expr;
 
+import java.util.Arrays;
+import java.util.Map;
+
+import static java.util.function.Function.identity;
+import static java.util.stream.Collectors.toUnmodifiableMap;
+
 public enum ComparisonOp {
     LT("<"),
     GT(">"),
@@ -18,4 +24,8 @@ public enum ComparisonOp {
     public String getSymbol() {
         return symbol;
     }
+
+    public static final Map<String, ComparisonOp> bySymbol =
+            Arrays.stream(ComparisonOp.values())
+                  .collect(toUnmodifiableMap(ComparisonOp::getSymbol, identity()));
 }
