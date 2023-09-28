@@ -23,7 +23,7 @@ object HdxPartitionReader {
   /**
    * A private parent directory for all temp files belonging to a single instance
    */
-  private lazy val hdxReaderTmp =
+  private lazy val hdxReaderTmp = {
     Files.createTempDirectory("hdx_reader").also { path =>
         Runtime.getRuntime.addShutdownHook(new Thread() {
           override def run(): Unit = {
@@ -33,6 +33,7 @@ object HdxPartitionReader {
         })
       }
       .toFile
+  }
 
   /**
    * This is done early before any work needs to be done because of https://bugs.openjdk.org/browse/JDK-8068370 -- we
@@ -133,8 +134,8 @@ trait HdxPartitionReader[T <: AnyRef] {
 
   private val turbineIniBefore = TurbineIni(storage, info.cloudCred1, info.cloudCred2, if (info.turbineCmdDockerName.isDefined) s"$DockerPathPrefix/$HdxFs" else hdxFsTmp.getAbsolutePath)
 
-  private lazy val (turbineIniAfter, credsTempFile) = if (storage.cloud == "gcp") {
-    val gcsKeyFile = new File(hdxReaderTmp, "turbine_gcs_key.json")
+  private lazy val (turbineIniAfter, credsTempFile) = if (storage.cloud == "gcp" || storage.cloud == "gcs") {
+    val gcsKeyFile = File.createTempFile("turbine_gcs_key", ".json", hdxReaderTmp)
 
     val turbineIni = Using.Manager { use =>
       // For gcs, cloudCred1 is a base64(gzip(gcs_service_account_key.json)) and cloudCred2 is unused
@@ -160,7 +161,7 @@ trait HdxPartitionReader[T <: AnyRef] {
   }
 
   // TODO don't create a duplicate file per partition, use a content hash or something
-  private lazy val turbineIniTmp = new File(hdxReaderTmp, "turbine.ini")
+  private lazy val turbineIniTmp = File.createTempFile("turbine", ".ini", hdxReaderTmp)
   resource(new FileOutputStream(turbineIniTmp)) {
     _.write(turbineIniAfter.getBytes("UTF-8"))
   }
