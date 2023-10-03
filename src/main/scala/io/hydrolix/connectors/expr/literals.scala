@@ -102,4 +102,97 @@ case class MapLiteral[K, V](value: Map[K, V], keyType: ValueType, valueType: Val
   override val `type` = MapType(keyType, valueType, valuesNullable)
 }
 
-case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Literal[Map[String, Any]]
+case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Literal[Map[String, Any]] {
+  @transient lazy val values = `type`.fields.map { sf =>
+    value.getOrElse(sf.name, null)
+  }
+
+  private def check(pos: Int): Unit = {
+    require(pos <= values.size - 1, s"Field index $pos out of range, must be ${values.size - 1}")
+  }
+
+  def getLong(pos: Int): Long = {
+    check(pos)
+    values(pos) match {
+      case b: Byte => b.toLong
+      case s: Short => s.toLong
+      case i: Int => i.toLong
+      case l: Long => l
+      case bd: BigDecimal => bd.toLongExact
+    }
+  }
+
+  def isNullAt(ordinal: Int): Boolean = {
+    check(ordinal)
+    values(ordinal) == null
+  }
+
+  def getBoolean(ordinal: Int): Boolean = {
+    check(ordinal)
+    values(ordinal) match {
+      case b: Boolean => b
+    }
+  }
+
+  def getByte(ordinal: Int): Byte = {
+    check(ordinal)
+    values(ordinal) match {
+      case b: Byte => b
+    }
+  }
+
+  def getShort(ordinal: Int): Short = {
+    check(ordinal)
+    values(ordinal) match {
+      case b: Byte => b.toShort
+      case s: Short => s
+    }
+  }
+
+  def getInt(ordinal: Int): Int = {
+    check(ordinal)
+    values(ordinal) match {
+      case b: Byte => b.toInt
+      case s: Short => s.toInt
+      case c: Char => c.toInt
+      case i: Int => i
+    }
+  }
+
+  def getFloat(ordinal: Int): Float = {
+    check(ordinal)
+    values(ordinal) match {
+      case f: Float => f
+    }
+  }
+
+  def getDouble(ordinal: Int): Double = {
+    check(ordinal)
+    values(ordinal) match {
+      case f: Float => f
+      case d: Double => d
+    }
+  }
+
+  def getDecimal(ordinal: Int, precision: Int, scale: Int): BigDecimal = {
+    check(ordinal)
+    values(ordinal) match {
+      case bd: BigDecimal => bd // TODO what should we do about the precision & scale args?
+      case f: Float => BigDecimal(f)
+      case d: Double => BigDecimal(d)
+      case b: Byte => BigDecimal(b)
+      case s: Short => BigDecimal(s)
+      case c: Char => BigDecimal(c)
+      case i: Int => BigDecimal(i)
+      case l: Long => BigDecimal(l)
+    }
+  }
+
+  def getString(ordinal: Int): String = {
+    check(ordinal)
+    values(ordinal) match {
+      case s: String => s
+      case other => other.toString // TODO do we actually want this?
+    }
+  }
+}

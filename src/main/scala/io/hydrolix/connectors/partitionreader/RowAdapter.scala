@@ -1,10 +1,11 @@
 package io.hydrolix.connectors.partitionreader
 
 import scala.collection.JavaConverters._
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.node.{ArrayNode, BooleanNode, NumericNode, ObjectNode, TextNode}
 
-import io.hydrolix.connectors.types.{ArrayType, MapType, StringType, StructType, ValueType}
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.node._
+
+import io.hydrolix.connectors.types._
 
 abstract class RowAdapter[R, A, M] {
   type RB <: RowBuilder
@@ -13,22 +14,22 @@ abstract class RowAdapter[R, A, M] {
 
   trait RowBuilder {
     val `type`: StructType
-    def setNull(name: String)
-    def setField(name: String, value: Any)
+    def setNull(name: String): Unit
+    def setField(name: String, value: Any): Unit
     def build: R
   }
 
   trait ArrayBuilder {
     val `type`: ArrayType
-    def set(pos: Int, value: Any)
-    def setNull(pos: Int)
+    def set(pos: Int, value: Any): Unit
+    def setNull(pos: Int): Unit
     def build: A
   }
 
   trait MapBuilder {
     val `type`: MapType
-    def put(key: Any, value: Any)
-    def putNull(key: Any)
+    def put(key: Any, value: Any): Unit
+    def putNull(key: Any): Unit
     def build: M
   }
 

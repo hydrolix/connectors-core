@@ -2,6 +2,7 @@ package io.hydrolix.connectors
 
 import io.hydrolix.connectors.types._
 
+//noinspection NameBooleanParameters
 object Types {
   private val arrayR = """array\((.*?)\)""".r
   private val mapR = """map\((.*?),\s*(.*?)\)""".r
@@ -79,12 +80,36 @@ object Types {
       case HdxValueType.Epoch => TimestampType.Millis // TODO is this right?
       case HdxValueType.Array =>
         val elt = hdxToValueType(htype.elements.get.head)
-        ArrayType(elt, false)
+        ArrayType(elt)
       case HdxValueType.Map =>
         val kt = hdxToValueType(htype.elements.get.apply(0))
         val vt = hdxToValueType(htype.elements.get.apply(1))
-        MapType(kt, vt, false)
+        MapType(kt, vt)
+      case other => sys.error(s"Can't convert Hydrolix column type $other to ValueType")
     }
   }
 
+  def valueTypeToHdx(vt: ValueType): HdxColumnDatatype = {
+    vt match {
+      case Int8Type         => HdxColumnDatatype(HdxValueType.Int8, false, false)
+      case UInt8Type        => HdxColumnDatatype(HdxValueType.UInt32, false, false)
+      case Int16Type        => HdxColumnDatatype(HdxValueType.Int32, false, false)
+      case UInt16Type       => HdxColumnDatatype(HdxValueType.UInt32, false, false)
+      case Int32Type        => HdxColumnDatatype(HdxValueType.Int32, false, false)
+      case UInt32Type       => HdxColumnDatatype(HdxValueType.UInt32, false, false)
+      case Int64Type        => HdxColumnDatatype(HdxValueType.Int64, false, false)
+      case UInt64Type       => HdxColumnDatatype(HdxValueType.UInt64, false, false)
+      case Float32Type      => HdxColumnDatatype(HdxValueType.Double, false, false)
+      case Float64Type      => HdxColumnDatatype(HdxValueType.Double, false, false)
+      case BooleanType      => HdxColumnDatatype(HdxValueType.Boolean, false, false)
+      case StringType       => HdxColumnDatatype(HdxValueType.String, false, false)
+      case TimestampType(0) => HdxColumnDatatype(HdxValueType.DateTime, false, false)
+      case TimestampType(3) => HdxColumnDatatype(HdxValueType.DateTime64, false, false)
+      case ArrayType(elt, _) =>
+        HdxColumnDatatype(HdxValueType.Array, false, false, elements = Some(List(valueTypeToHdx(elt))))
+      case MapType(kt, vt, _) =>
+        HdxColumnDatatype(HdxValueType.Map, false, false, elements = Some(List(valueTypeToHdx(kt), valueTypeToHdx(vt))))
+      case other => sys.error(s"Can't convert ValueType $other to Hydrolix column type")
+    }
+  }
 }

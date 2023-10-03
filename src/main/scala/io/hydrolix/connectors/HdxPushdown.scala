@@ -226,7 +226,7 @@ object HdxPushdown {
   }
 
   /**
-   * Try to render a Spark predicate into something that will hopefully be acceptable to FilterExprParser
+   * Try to render a predicate into something that will hopefully be acceptable to FilterExprParser
    *
    * @return Some(s) if the predicate was rendered successfully; None if not
    */
@@ -238,7 +238,7 @@ object HdxPushdown {
     expr match {
       case Comparison(GetField(field, typ), op, lit @ Literal(_, _)) if timeOps.contains(op) && hdxSimpleTypes.contains(typ) =>
         val hcol = cols.getOrElse(field, sys.error(s"No HdxColumnInfo for $field"))
-        val hdxOp = hdxOps.getOrElse(op, sys.error(s"No hydrolix operator for Spark operator $op"))
+        val hdxOp = hdxOps.getOrElse(op, sys.error(s"No hydrolix operator for $op"))
 
         if (hcol.indexed == 2) {
           if (hcol.hdxType.`type` == HdxValueType.String) {
@@ -258,7 +258,7 @@ object HdxPushdown {
           None
         } else {
           // Note, at this point we don't care if it's the partition min/max timestamp; any timestamp will do
-          val hdxOp = hdxOps.getOrElse(op, sys.error(s"No hydrolix operator for Spark operator $op"))
+          val hdxOp = hdxOps.getOrElse(op, sys.error(s"No hydrolix operator for $op"))
           val hcol = cols.getOrElse(field, sys.error(s"No HdxColumnInfo for $field"))
 
           val long = if (hcol.hdxType.`type` == HdxValueType.DateTime64) lit.toEpochMilli else lit.getEpochSecond
@@ -298,10 +298,93 @@ object HdxPushdown {
    */
   def pushableAgg[T : Numeric](aggregation: AggregateFun[T], primaryKeyField: String): Option[StructField] = {
     aggregation match {
-      case CountStar => Some(StructField("COUNT(*)", Int64Type, nullable = false))
+      case CountStar => Some(StructField("COUNT(*)", Int64Type))
       case Min(GetField(`primaryKeyField`, ttype @ TimestampType(_))) => Some(StructField(s"MIN($primaryKeyField)", ttype, nullable = true))
       case Max(GetField(`primaryKeyField`, ttype @ TimestampType(_))) => Some(StructField(s"MAX($primaryKeyField)", ttype, nullable = true))
       case _ => None
+    }
+  }
+
+  def planPartitions(info: HdxConnectionInfo,
+                     jdbc: HdxJdbcSession,
+                    table: HdxTable,
+                     cols: StructType,
+              pushedPreds: List[Expr[Boolean]])
+                         : List[HdxPartitionScanPlan] =
+  {
+    val hdxCols = table.hdxCols
+      .filter {
+        case (name, _) => cols.fields.exists(_.name == name)
+      }
+
+    // TODO we have `pushedPreds`, we can make this query a lot more selective (carefully!)
+    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1))
+
+    parts.zipWithIndex.flatMap { case (dbPartition, i) =>
+      doPlan(table, info.partitionPrefix, cols, pushedPreds, hdxCols, dbPartition, i)
+    }
+  }
+
+  def doPlan(table: HdxTable,
+   partitionPrefix: Option[String],
+              cols: StructType,
+       pushedPreds: List[Expr[Boolean]],
+           hdxCols: Map[String, HdxColumnInfo],
+       dbPartition: HdxDbPartition,
+                 i: Int)
+                  : Option[HdxPartitionScanPlan] =
+  {
+    val min = dbPartition.minTimestamp
+    val max = dbPartition.maxTimestamp
+    val sk = dbPartition.shardKey
+
+    // pushedPreds is implicitly an AND here
+    val pushResults = pushedPreds.map(prunePartition(table.primaryKeyField, table.shardKeyField, _, min, max, sk))
+    if (pushedPreds.nonEmpty && pushResults.contains(true)) {
+      // At least one pushed predicate said we could skip this partition
+      log.debug(s"Skipping partition ${i + 1}: $dbPartition")
+      None
+    } else {
+      log.debug(s"Scanning partition ${i + 1}: $dbPartition. Per-predicate results: ${pushedPreds.zip(pushResults).mkString("\n  ", "\n  ", "\n")}")
+      // Either nothing was pushed, or at least one predicate didn't want to prune this partition; scan it
+
+      val (path, storageId) = dbPartition.storageId match {
+        case Some(id) if dbPartition.partition.startsWith(id.toString + "/") =>
+          log.debug(s"storage_id = ${dbPartition.storageId}, partition = ${dbPartition.partition}")
+          // Remove storage ID prefix if present; it's not there physically
+          ("db/hdx/" + dbPartition.partition.drop(id.toString.length + 1), id)
+        case _ =>
+          // No storage ID from catalog or not present in the path, assume the prefix is there
+          val defaults = table.storages.filter(_._2.isDefault)
+          if (defaults.isEmpty) {
+            if (table.storages.isEmpty) {
+              // Note: this won't be empty if the storage settings override is used
+              sys.error(s"No storage found for partition ${dbPartition.partition}")
+            } else {
+              val firstId = table.storages.head._1
+              log.warn(s"Partition ${dbPartition.partition} had no `storage_id`, and cluster has no default storage; using the first (#$firstId)")
+              (partitionPrefix.getOrElse("") + dbPartition.partition, firstId)
+            }
+          } else {
+            val firstDefault = defaults.head._1
+            if (defaults.size > 1) {
+              log.warn(s"Partition ${dbPartition.partition} had no `storage_id`, and cluster has multiple default storages; using the first (#$firstDefault)")
+            }
+            (partitionPrefix.getOrElse("") + dbPartition.partition, firstDefault)
+          }
+      }
+
+      Some(
+        HdxPartitionScanPlan(
+          table.ident.head,
+          table.ident(1),
+          storageId,
+          path,
+          cols,
+          pushedPreds,
+          hdxCols
+        )
+      )
     }
   }
 }
