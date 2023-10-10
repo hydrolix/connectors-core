@@ -89,8 +89,8 @@ object HdxPushdown {
       case In(GetField(field, StringType), ArrayLiteral(_, StringType, _)) if mShardKeyField.contains(field) =>
         // shardKeyField IN (string literals)
         2
-      case Comparison(GetField(f, _), op, Literal(_, typ)) if hdxOps.contains(op) && hdxSimpleTypes.contains(typ) =>
-        // field op literal
+      case Comparison(GetField(f, StringType), op, StringLiteral(_)) if hdxOps.contains(op) =>
+        // field:string op 'literal'
         val hcol = cols.getOrElse(f, sys.error(s"No HdxColumnInfo for $f"))
         if (hcol.indexed == 2) {
           // This field is indexed in all partitions, but we can't return 1 because `turbine_cmd` only does block-level
@@ -99,6 +99,11 @@ object HdxPushdown {
         } else {
           2
         }
+      case Comparison(GetField(f, _), op, Literal(_, typ)) if hdxOps.contains(op) && hdxSimpleTypes.contains(typ) =>
+        // field: !string op literal
+        // TODO this currently disqualifies non-string comparisons due to an implementation restriction in turbine_cmd
+        log.info("Implementation restriction: simple comparisons against non-string fields can't be pushed down yet")
+        3
       case Not(expr) =>
         // child is pushable
         pushable(primaryKeyField, mShardKeyField, expr, cols)
@@ -225,6 +230,11 @@ object HdxPushdown {
     }
   }
 
+  private def quote(s: String): String = {
+    val in = if (s.contains("'")) s.replace("'", "''") else s
+    s"'$in'"
+  }
+
   /**
    * Try to render a predicate into something that will hopefully be acceptable to FilterExprParser
    *
@@ -236,14 +246,14 @@ object HdxPushdown {
                               : Option[String] =
   {
     expr match {
-      case Comparison(GetField(field, typ), op, lit @ Literal(_, _)) if timeOps.contains(op) && hdxSimpleTypes.contains(typ) =>
+      case Comparison(GetField(field, typ), op, Literal(value, _)) if timeOps.contains(op) && hdxSimpleTypes.contains(typ) =>
         val hcol = cols.getOrElse(field, sys.error(s"No HdxColumnInfo for $field"))
         val hdxOp = hdxOps.getOrElse(op, sys.error(s"No hydrolix operator for $op"))
 
         if (hcol.indexed == 2) {
           if (hcol.hdxType.`type` == HdxValueType.String) {
             // This field is indexed in all partitions, make it so
-            Some(s""""$field" $hdxOp $lit""")
+            Some(s""""$field" $hdxOp ${quote(value.toString)}""")
           } else {
             log.warn(s"TODO $field isn't a string, we can't pushdown (yet?)")
             None

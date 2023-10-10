@@ -1,8 +1,8 @@
 package io.hydrolix.connectors.partitionreader
 
-import java.time.format.DateTimeFormatter
-import scala.collection.mutable
+import java.time.Instant
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 import com.fasterxml.jackson.databind.node.{BooleanNode, NumericNode, TextNode}
 
@@ -26,7 +26,7 @@ object CoreRowAdapter extends RowAdapter[StructLiteral, ArrayLiteral[_], MapLite
     `type` match {
       case StringType => value.textValue()
       case BooleanType => value.textValue().toLowerCase() == "true"
-      case TimestampType(_) => DateTimeFormatter.ISO_INSTANT
+      case TimestampType(_) => Instant.parse(value.textValue())
     }
   }
 

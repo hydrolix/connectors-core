@@ -1,7 +1,7 @@
 package io.hydrolix.connectors
 
 package object types {
-  trait ValueType
+  trait ValueType extends Serializable
 
   object AnyType extends ValueType
 }

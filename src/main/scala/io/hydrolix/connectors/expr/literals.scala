@@ -3,6 +3,7 @@ package io.hydrolix.connectors.expr
 
 import java.time.Instant
 
+import io.hydrolix.connectors.instantToMicros
 import io.hydrolix.connectors.types._
 
 trait Literal[+T] extends Expr[T] {
@@ -86,6 +87,10 @@ object Float64Literal {
   val `1d` = Float64Literal(1d)
 }
 
+case class DecimalLiteral(value: java.math.BigDecimal) extends Literal[java.math.BigDecimal] {
+  override val `type` = DecimalType(value.precision(), value.scale())
+}
+
 /**
  * Note that since this contains an Instant, it declares its type as TimestampType(6) but consumers of the expression
  * may want different precision.
@@ -114,6 +119,7 @@ case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Li
   def getLong(pos: Int): Long = {
     check(pos)
     values(pos) match {
+      case i: Instant => instantToMicros(i)
       case b: Byte => b.toLong
       case s: Short => s.toLong
       case i: Int => i.toLong

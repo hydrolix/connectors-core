@@ -15,14 +15,3 @@ case class In[T](left: Expr[T], rights: Expr[List[T]]) extends Expr[Boolean] {
   override val `type` = BooleanType
   override val children = List(left, rights)
 }
-
-/*
-case class GroupAggregate(groupByExprs: List[Expr[_]], aggs: List[AggregateFun[_]], aggNames: List[Option[String]]) extends Expr[TableLiteral] {
-  override val `type` = aggs.map(_.`type`)
-  override val children = groupByExprs ++ aggs
-}
-
-case class TableLiteral(schema: StructType, rows: List[Map[String, Any]]) extends Literal[(StructType, List[Map[String, Any]])] {
-  override val `type` = schema // TODO probably not?
-  override val value = (schema, rows)
-}*/

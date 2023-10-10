@@ -9,5 +9,5 @@ case class MapType(keyType: ValueType, valueType: ValueType, valuesNullable: Boo
 case class StructField(name: String, `type`: ValueType, nullable: Boolean = false)
 
 case class StructType(fields: StructField*) extends ComplexType {
-  @transient lazy val byName = fields.map(sf => sf.name -> sf).toMap
+  @transient lazy val byName: Map[String, StructField] = fields.map(sf => sf.name -> sf).toMap
 }

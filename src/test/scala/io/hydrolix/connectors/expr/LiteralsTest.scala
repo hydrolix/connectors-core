@@ -1,0 +1,79 @@
+package io.hydrolix.connectors.expr
+
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+import io.hydrolix.connectors.types._
+
+//noinspection NameBooleanParameters
+class LiteralsTest {
+  private val nestedStructType = StructType(StructField("nested.i", Int32Type), StructField("nested.s", StringType))
+
+  private val structType = StructType(
+    StructField("b", BooleanType),
+    StructField("i8", Int8Type),
+    StructField("u8", UInt8Type),
+    StructField("i16", Int16Type),
+    StructField("u16", UInt16Type),
+    StructField("i32", Int32Type),
+    StructField("u32", UInt32Type),
+    StructField("i64", Int64Type),
+    StructField("u64", UInt64Type),
+    StructField("f32", Float32Type),
+    StructField("f64", Float64Type),
+    StructField("s", StringType),
+    StructField("d", DecimalType(20, 3)),
+    StructField("array[i32!]", ArrayType(Int32Type, false)),
+    StructField("array[i32?]", ArrayType(Int32Type, true)),
+    StructField("map[string, f64!]", MapType(StringType, Float64Type, false)),
+    StructField("nested", nestedStructType)
+  )
+
+  private val structLiteral = StructLiteral(Map(
+    "b" -> BooleanLiteral.True,
+    "i8" -> Int8Literal(123),
+    "u8" -> UInt8Literal(234),
+    "i16" -> Int16Literal(31337),
+    "u16" -> UInt16Literal(65535),
+    "i32" -> Int32Literal(2 * 1024 * 1024),
+    "u32" -> UInt32Literal(4 * 1024 * 1024),
+    "i64" -> Int64Literal(2 * 1024 * 1024 * 1024),
+    "u64" -> UInt64Literal(4 * 1024 * 1024 * 1024),
+    "f32" -> Float32Literal(32.0f),
+    "f64" -> Float64Literal(64.0f),
+    "s" -> StringLiteral("hello world!"),
+    "d" -> DecimalLiteral(java.math.BigDecimal.valueOf(3.14159265)),
+    "array[i32!]" -> ArrayLiteral(List(1, 2, 3), Int32Type, false),
+    "array[i32?]" -> ArrayLiteral(List(10, null, 20, null, 30), Int32Type, true),
+    "map[string, f64!]" -> MapLiteral(Map("one" -> 1.0, "two" -> 2.0, "three" -> 3.0), StringType, Float64Type, false),
+    "nested" -> StructLiteral(Map("nested.i" -> 123, "nested.s" -> "yolo"), nestedStructType)
+  ), structType)
+
+  @Test
+  def `struct with every type of literal`(): Unit = {
+    assertEquals(structType.fields.size, structLiteral.values.size)
+    assertEquals(structLiteral.value.size, structLiteral.values.size)
+
+    for ((sf, i) <- structType.fields.zipWithIndex) {
+      val valueByName = structLiteral.value(sf.name)
+      val valueByPos = structLiteral.values(i)
+
+      assertEquals(valueByName, valueByPos)
+    }
+  }
+
+  @Test
+  def `ser/des all the things`(): Unit = {
+    val baos = new ByteArrayOutputStream()
+    val oos = new ObjectOutputStream(baos)
+    oos.writeObject(structLiteral)
+    oos.close()
+    val bytes = baos.toByteArray
+    val ois = new ObjectInputStream(new ByteArrayInputStream(bytes))
+    val structLiteral2 = ois.readObject().asInstanceOf[StructLiteral]
+    println(structLiteral2)
+    assertEquals(structLiteral, structLiteral2)
+  }
+}

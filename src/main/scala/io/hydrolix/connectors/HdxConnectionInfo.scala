@@ -6,29 +6,31 @@ import java.net.URI
 /**
  * All the information we need to connect to a Hydrolix cluster
  *
- * @param jdbcUrl         the JDBC URL to connect to the Hydrolix query head,
- *                        e.g. `jdbc:clickhouse://host:port/db?ssl=true`
- * @param user            the username to authenticate to JDBC and the Hydrolix API
- * @param password        the password for authentication to JDBC and the Hydrolix API
- * @param apiUrl          the URL of the Hydrolix API; probably needs to end with `/config/v1/` at the moment.
- * @param partitionPrefix string to prepend to partition paths, only needed during weird version transitions
- * @param cloudCred1      first credential for storage, required, e.g.:
- *                          - for `gcs`, the base64(gzip(_)) of a gcp service account key file
- *                          - for AWS, the access key ID
- * @param cloudCred2      second credential for storage, optional, e.g.:
- *                          - for `gcs`, not required
- *                          - for AWS, the secret key
+ * @param jdbcUrl              the JDBC URL to connect to the Hydrolix query head,
+ *                             e.g. `jdbc:clickhouse://host:port/db?ssl=true`
+ * @param user                 the username to authenticate to JDBC and the Hydrolix API
+ * @param password             the password for authentication to JDBC and the Hydrolix API
+ * @param apiUrl               the URL of the Hydrolix API; probably needs to end with `/config/v1/` at the moment.
+ * @param partitionPrefix      string to prepend to partition paths, only needed during weird version transitions
+ * @param cloudCred1           first credential for storage, required, e.g.:
+ *                               - for `gcs`, the base64(gzip(_)) of a gcp service account key file
+ *                               - for AWS, the access key ID
+ * @param cloudCred2           second credential for storage, optional, e.g.:
+ *                               - for `gcs`, not required
+ *                               - for AWS, the secret key
+ * @param turbineCmdDockerName name of a Docker image/container to use to run `turbine_cmd`, in case the host OS isn't
+ *                             a modern Linux distro
  */
 case class HdxConnectionInfo(jdbcUrl: String,
-                             user: String,
-                             password: String,
-                             apiUrl: URI,
-                             partitionPrefix: Option[String],
-                             cloudCred1: String,
-                             cloudCred2: Option[String],
-                             turbineCmdDockerName: Option[String])
+                                user: String,
+                            password: String,
+                              apiUrl: URI,
+                     partitionPrefix: Option[String],
+                          cloudCred1: String,
+                          cloudCred2: Option[String],
+                turbineCmdDockerName: Option[String])
 {
-  val asMap: Map[String, String] = {
+  @transient lazy val asMap: Map[String, String] = {
     import HdxConnectionInfo._
 
     Map(
