@@ -15,6 +15,8 @@ name := "hydrolix-connectors-core"
 
 javacOptions := Seq("-source", "11", "-target", "11")
 
+Test / fork := true
+
 //noinspection SpellCheckingInspection
 libraryDependencies := Seq(
   "com.clickhouse" % "clickhouse-jdbc" % "0.4.6",
