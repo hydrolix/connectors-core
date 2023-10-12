@@ -51,6 +51,37 @@ class LiteralsTest {
     "nested" -> StructLiteral(Map("nested.i" -> 123, "nested.s" -> "yolo"), nestedStructType)
   ), structType)
 
+  private val structTypeName =
+    """struct<
+      |"b":boolean,
+      |"i8":int8,
+      |"u8":uint8,
+      |"i16":int16,
+      |"u16":uint16,
+      |"i32":int32,
+      |"u32":uint32,
+      |"i64":int64,
+      |"u64":uint64,
+      |"f32":float32,
+      |"f64":float64,
+      |"s":string,
+      |"d":decimal(20,3),
+      |"array[i32!]":array<int32,false>,
+      |"array[i32?]":array<int32,true>,
+      |"map[string, f64!]":map<string,float64,false>,
+      |"nested":struct<"nested.i":int32,"nested.s":string>
+      |>""".stripMargin.replace("\n", "")
+
+  @Test
+  def `ValueType names render OK`(): Unit = {
+    assertEquals(structTypeName, structType.decl)
+  }
+
+  @Test
+  def `ValueType names parse OK`(): Unit = {
+    assertEquals(structType, ValueType.parse(structTypeName))
+  }
+
   @Test
   def `struct with every type of literal`(): Unit = {
     assertEquals(structType.fields.size, structLiteral.values.size)

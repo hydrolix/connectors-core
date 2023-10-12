@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.hydrolix"
-ThisBuild / version := "0.2.4-SNAPSHOT"
+ThisBuild / version := "0.3.0-SNAPSHOT"
 ThisBuild / organizationHomepage := Some(url("https://hydrolix.io/"))
 ThisBuild / homepage := Some(url("https://github.com/hydrolix/connectors-core/"))
 ThisBuild / licenses := List(
@@ -22,6 +22,7 @@ libraryDependencies := Seq(
   "com.clickhouse" % "clickhouse-jdbc" % "0.4.6",
   "com.zaxxer" % "HikariCP" % "5.0.1",
   "com.google.guava" % "guava" % "32.0.0-jre",
+  "com.lihaoyi" %% "fastparse" % "3.0.2",
 
   "com.github.bigwheel" %% "util-backports" % "2.1",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.14.2",
