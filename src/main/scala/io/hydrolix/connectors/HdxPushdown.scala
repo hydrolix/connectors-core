@@ -327,8 +327,16 @@ object HdxPushdown {
         case (name, _) => cols.fields.exists(_.name == name)
       }
 
-    // TODO we have `pushedPreds`, we can make this query a lot more selective (carefully!)
-    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1), None, None)
+    // Get min & max for partition pruning if top-level (i.e. in an AND) and GE(pk, literal) or LE(pk, literal)
+    val min = pushedPreds.collectFirst {
+      case GreaterEqual(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst
+    }
+
+    val max = pushedPreds.collectFirst {
+      case LessEqual(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst
+    }
+
+    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1), min, max)
 
     parts.zipWithIndex.flatMap { case (dbPartition, i) =>
       doPlan(table, info.partitionPrefix, cols, pushedPreds, hdxCols, dbPartition, i)

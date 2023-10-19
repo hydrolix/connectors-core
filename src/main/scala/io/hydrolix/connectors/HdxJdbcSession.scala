@@ -132,7 +132,7 @@ class HdxJdbcSession private (info: HdxConnectionInfo) {
         if (qmax.isBefore(qmin)) sys.error(s"Query max timestamp $qmax was before min $qmin!")
 
         (
-          prefix + " WHERE p.max_timestamp >= ? AND p.min_timestamp <= ?",
+          prefix + " WHERE p.max_timestamp >= parseDateTimeBestEffort(?) AND p.min_timestamp <= parseDateTimeBestEffort(?)",
           { stmt =>
             stmt.setObject(1, LocalDateTime.ofInstant(qmin, ZoneId.of("UTC")))
             stmt.setObject(2, LocalDateTime.ofInstant(qmax, ZoneId.of("UTC")))
@@ -141,13 +141,13 @@ class HdxJdbcSession private (info: HdxConnectionInfo) {
       case (Some(qmin), None) =>
         // Partition max is >= query min
         (
-          prefix + " WHERE p.max_timestamp >= ?",
+          prefix + " WHERE p.max_timestamp >= parseDateTimeBestEffort(?)",
           _.setObject(1, LocalDateTime.ofInstant(qmin, ZoneId.of("UTC")))
         )
       case (None, Some(qmax)) =>
         // Partition min is <= query max
         (
-          prefix + " WHERE p.min_timestamp <= ?",
+          prefix + " WHERE p.min_timestamp <= parseDateTimeBestEffort(?)",
           _.setObject(1, LocalDateTime.ofInstant(qmax, ZoneId.of("UTC")))
         )
       case (None, None) =>
