@@ -99,7 +99,7 @@ object HdxPushdown {
         } else {
           2
         }
-      case Comparison(GetField(f, _), op, Literal(_, typ)) if hdxOps.contains(op) && hdxSimpleTypes.contains(typ) =>
+      case Comparison(GetField(_, _), op, Literal(_, typ)) if hdxOps.contains(op) && hdxSimpleTypes.contains(typ) =>
         // field: !string op literal
         // TODO this currently disqualifies non-string comparisons due to an implementation restriction in turbine_cmd
         log.info("Implementation restriction: simple comparisons against non-string fields can't be pushed down yet")
@@ -328,7 +328,7 @@ object HdxPushdown {
       }
 
     // TODO we have `pushedPreds`, we can make this query a lot more selective (carefully!)
-    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1))
+    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1), None, None)
 
     parts.zipWithIndex.flatMap { case (dbPartition, i) =>
       doPlan(table, info.partitionPrefix, cols, pushedPreds, hdxCols, dbPartition, i)

@@ -1,6 +1,7 @@
 package io.hydrolix.connectors
 
-import java.time.{Instant, ZoneOffset}
+import java.sql.PreparedStatement
+import java.time.{Instant, LocalDateTime, ZoneId, ZoneOffset}
 import java.util.{Properties, UUID}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -26,7 +27,7 @@ object HdxJdbcSession {
  */
 class HdxJdbcSession private (info: HdxConnectionInfo) {
   private lazy val pool = {
-    val ds = {
+    val ds = info.dataSource.getOrElse {
       val props = new Properties()
       props.put("web_context", "/query")
       props.put("path", "/query")
@@ -69,11 +70,20 @@ class HdxJdbcSession private (info: HdxConnectionInfo) {
     }.get
   }
 
-  def collectPartitions(db: String, table: String): List[HdxDbPartition] = {
+  def collectPartitions(db: String,
+                     table: String,
+                  earliest: Option[Instant],
+                    latest: Option[Instant])
+                          : List[HdxDbPartition] =
+  {
+    val (query, setParams) = catalogQuery(db, table, earliest, latest)
+
     Using.Manager { use =>
       val conn = use(pool.getConnection)
-      val stmt = use(conn.createStatement())
-      val rs = use(stmt.executeQuery(s"SELECT * FROM `$db`.`$table#.catalog`"))
+      val stmt = use(conn.prepareStatement(query))
+      setParams(stmt)
+
+      val rs = use(stmt.executeQuery())
 
       val partitions = ListBuffer[HdxDbPartition]()
 
@@ -93,7 +103,12 @@ class HdxJdbcSession private (info: HdxConnectionInfo) {
           rs.getString("shard_key"),
           rs.getByte("active") == 1,
           if (hasStorageId) {
-            rs.getString("storage_id").noneIfEmpty.map(UUID.fromString)
+            val sid = rs.getString("storage_id")
+            if (rs.wasNull()) {
+              None
+            } else {
+              sid.noneIfEmpty.map(UUID.fromString)
+            }
           } else {
             None
           }
@@ -101,6 +116,44 @@ class HdxJdbcSession private (info: HdxConnectionInfo) {
       }
       partitions.toList
     }.get
+  }
+
+  def catalogQuery(db: String,
+                table: String,
+             earliest: Option[Instant],
+               latest: Option[Instant])
+                     : (String, PreparedStatement => Unit) =
+  {
+    val prefix = s"SELECT * FROM `$db`.`$table#.catalog` p"
+
+    (earliest, latest) match {
+      // Partition max is >= query min, and partition min is <= query max
+      case (Some(qmin), Some(qmax)) =>
+        if (qmax.isBefore(qmin)) sys.error(s"Query max timestamp $qmax was before min $qmin!")
+
+        (
+          prefix + " WHERE p.max_timestamp >= ? AND p.min_timestamp <= ?",
+          { stmt =>
+            stmt.setObject(1, LocalDateTime.ofInstant(qmin, ZoneId.of("UTC")))
+            stmt.setObject(2, LocalDateTime.ofInstant(qmax, ZoneId.of("UTC")))
+          }
+        )
+      case (Some(qmin), None) =>
+        // Partition max is >= query min
+        (
+          prefix + " WHERE p.max_timestamp >= ?",
+          _.setObject(1, LocalDateTime.ofInstant(qmin, ZoneId.of("UTC")))
+        )
+      case (None, Some(qmax)) =>
+        // Partition min is <= query max
+        (
+          prefix + " WHERE p.min_timestamp <= ?",
+          _.setObject(1, LocalDateTime.ofInstant(qmax, ZoneId.of("UTC")))
+        )
+      case (None, None) =>
+        // Unconstrained
+        (prefix, _ => ())
+    }
   }
 }
 

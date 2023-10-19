@@ -1,5 +1,5 @@
 ThisBuild / organization := "io.hydrolix"
-ThisBuild / version := "0.3.0-SNAPSHOT"
+ThisBuild / version := "0.3.2-SNAPSHOT"
 ThisBuild / organizationHomepage := Some(url("https://hydrolix.io/"))
 ThisBuild / homepage := Some(url("https://github.com/hydrolix/connectors-core/"))
 ThisBuild / licenses := List(
@@ -35,4 +35,5 @@ libraryDependencies := Seq(
   "net.java.dev.jna" % "jna" % "5.13.0", // for Wyhash
 
   "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
+  "com.h2database" % "h2" % "2.2.224" % Test,
 )

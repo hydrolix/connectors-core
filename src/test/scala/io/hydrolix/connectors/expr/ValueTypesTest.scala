@@ -7,8 +7,7 @@ import org.junit.Test
 
 import io.hydrolix.connectors.types._
 
-//noinspection NameBooleanParameters
-class LiteralsTest {
+class ValueTypesTest {
   private val nestedStructType = StructType(StructField("nested.i", Int32Type), StructField("nested.s", StringType))
 
   private val structType = StructType(
@@ -73,13 +72,18 @@ class LiteralsTest {
       |>""".stripMargin.replace("\n", "")
 
   @Test
-  def `ValueType names render OK`(): Unit = {
+  def `ValueType decls render OK`(): Unit = {
     assertEquals(structTypeName, structType.decl)
   }
 
   @Test
-  def `ValueType names parse OK`(): Unit = {
+  def `ValueType decls parse OK`(): Unit = {
     assertEquals(structType, ValueType.parse(structTypeName))
+  }
+
+  @Test
+  def `ValueType.parse works`(): Unit = {
+    println(ValueType.parse("""struct<"timestamp":timestamp(3), "level":string, "message":string>"""))
   }
 
   @Test

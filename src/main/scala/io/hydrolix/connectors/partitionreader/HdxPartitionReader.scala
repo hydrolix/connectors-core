@@ -15,7 +15,7 @@ import scala.util.{Try, Using}
 import com.google.common.io.{ByteStreams, MoreFiles, RecursiveDeleteOption}
 import org.slf4j.LoggerFactory
 
-import io.hydrolix.connectors.{Etc, HdxConnectionInfo, HdxOutputColumn, HdxPartitionScanPlan, HdxPushdown, HdxStorageSettings, JSON, spawn}
+import io.hydrolix.connectors.{Etc, HdxConnectionInfo, HdxOutputColumn, HdxPartitionScanPlan, HdxPushdown, HdxStorageSettings, JSON, RmRfThread, spawn}
 
 object HdxPartitionReader {
   private val log = LoggerFactory.getLogger(getClass)
@@ -25,14 +25,8 @@ object HdxPartitionReader {
    */
   private lazy val hdxReaderTmp = {
     Files.createTempDirectory("hdx_reader").also { path =>
-        Runtime.getRuntime.addShutdownHook(new Thread() {
-          override def run(): Unit = {
-            log.info(s"Deleting hdx_reader tmp directory $path")
-            MoreFiles.deleteRecursively(path, RecursiveDeleteOption.ALLOW_INSECURE)
-          }
-        })
-      }
-      .toFile
+      new RmRfThread(path.toFile).hook()
+    }.toFile
   }
 
   /**

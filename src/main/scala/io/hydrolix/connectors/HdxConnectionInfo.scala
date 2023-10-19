@@ -2,6 +2,7 @@ package io.hydrolix.connectors
 
 
 import java.net.URI
+import javax.sql.DataSource
 
 /**
  * All the information we need to connect to a Hydrolix cluster
@@ -20,6 +21,7 @@ import java.net.URI
  *                               - for AWS, the secret key
  * @param turbineCmdDockerName name of a Docker image/container to use to run `turbine_cmd`, in case the host OS isn't
  *                             a modern Linux distro
+ * @param dataSource           pass a DataSource here for testing so we don't need to connect to a real ClickHouse
  */
 case class HdxConnectionInfo(jdbcUrl: String,
                                 user: String,
@@ -28,7 +30,8 @@ case class HdxConnectionInfo(jdbcUrl: String,
                      partitionPrefix: Option[String],
                           cloudCred1: String,
                           cloudCred2: Option[String],
-                turbineCmdDockerName: Option[String])
+                turbineCmdDockerName: Option[String],
+               @transient dataSource: Option[DataSource] = None)
 {
   @transient lazy val asMap: Map[String, String] = {
     import HdxConnectionInfo._
