@@ -160,11 +160,11 @@ class PushdownTest {
   }
 
   private def setupCatalog(): (HdxJdbcSession, PreparedStatement) = {
-    val tmp = new File(System.getenv("java.io.tmpdir"), s"testdb-${UUID.randomUUID().toString}")
+    val tmp = new File(System.getProperty("java.io.tmpdir"), s"testdb-${UUID.randomUUID().toString}")
     tmp.mkdirs()
     new RmRfThread(tmp).hook()
 
-    val url = s"jdbc:h2:file:${tmp.getAbsolutePath}"
+    val url = s"jdbc:h2:file:${tmp.getAbsolutePath}/testdb"
 
     val ds = new JdbcDataSource().also(_.setURL(url))
     val conn = ds.getConnection
@@ -211,7 +211,8 @@ class PushdownTest {
       "hello",
       Some("goodbye"),
       None,
-      Some(ds)
+      Some(ds),
+      Some("parsedatetime(?, 'yyyy-MM-dd'' ''HH:mm:ss')")
     ))
 
     (jdbc, ps)

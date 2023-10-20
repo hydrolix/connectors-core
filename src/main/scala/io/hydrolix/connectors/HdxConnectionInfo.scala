@@ -22,6 +22,8 @@ import javax.sql.DataSource
  * @param turbineCmdDockerName name of a Docker image/container to use to run `turbine_cmd`, in case the host OS isn't
  *                             a modern Linux distro
  * @param dataSource           pass a DataSource here for testing so we don't need to connect to a real ClickHouse
+ * @param timestampLiteralConv a string like `parseDateTimeBestEffort(?)` or `parsedatetime(?, 'yyyy-MM-dd'' ''HH:mm:ss')`
+ *                             to use when converting timestamp literals to timestamp values
  */
 case class HdxConnectionInfo(jdbcUrl: String,
                                 user: String,
@@ -31,7 +33,8 @@ case class HdxConnectionInfo(jdbcUrl: String,
                           cloudCred1: String,
                           cloudCred2: Option[String],
                 turbineCmdDockerName: Option[String],
-               @transient dataSource: Option[DataSource] = None)
+               @transient dataSource: Option[DataSource] = None,
+                timestampLiteralConv: Option[String] = None)
 {
   @transient lazy val asMap: Map[String, String] = {
     import HdxConnectionInfo._
