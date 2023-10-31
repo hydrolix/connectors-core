@@ -1,6 +1,6 @@
 ## Notes about this directory
 
-### turbine_cmd
+### linux-x86-64/turbine_cmd
 This binary blob is proprietary, not open source. See the [relevant section](../../../README.md#proprietary) of the 
 top-level README for more information.
 
