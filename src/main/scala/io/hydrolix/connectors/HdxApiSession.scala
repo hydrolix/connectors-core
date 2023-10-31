@@ -9,8 +9,11 @@ import org.apache.hc.client5.http.classic.methods.{HttpGet, HttpPost, HttpUriReq
 import org.apache.hc.client5.http.impl.classic.{BasicHttpClientResponseHandler, HttpClients}
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
+import org.slf4j.LoggerFactory
 
 final class HdxApiSession(info: HdxConnectionInfo) {
+  private val logger = LoggerFactory.getLogger(getClass)
+
   def tables(db: String): List[HdxApiTable] = {
     val project = database(db).getOrElse(sys.error(s"No such database $db"))
     allTablesCache.get(project.uuid)

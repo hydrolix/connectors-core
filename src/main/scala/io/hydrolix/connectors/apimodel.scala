@@ -54,7 +54,8 @@ case class HdxTableStreamSettings(tokenList: List[String],
              coldDataMaxMinutesPerPartition: Int,
                      coldDataMaxOpenSeconds: Int,
                      coldDataMaxIdleSeconds: Int,
-                        messageQueueMaxRows: Option[Int])
+                        messageQueueMaxRows: Option[Int],
+                           tokenAuthEnabled: Option[Boolean])
 
 @JsonNaming(classOf[SnakeCaseStrategy])
 case class HdxTableSettingsAge(maxAgeDays: Int)
@@ -95,7 +96,8 @@ case class HdxTableSettingsAutoIngest(enabled: Boolean,
                        maxMinutesPerPartition: Long,
                           maxActivePartitions: Int,
                                        dryRun: Boolean,
-                                    transform: Option[UUID])
+                                         name: Option[String],
+                                    transform: Option[String])
 
 @JsonNaming(classOf[SnakeCaseStrategy])
 case class HdxApiTable(project: UUID,
