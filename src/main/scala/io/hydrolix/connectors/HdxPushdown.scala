@@ -327,16 +327,19 @@ object HdxPushdown {
         case (name, _) => cols.fields.exists(_.name == name)
       }
 
-    // Get min & max for partition pruning if top-level (i.e. in an AND) and GE(pk, literal) or LE(pk, literal)
-    val min = pushedPreds.collectFirst {
+    // Get min & max timestamps for partition pruning -- the +1/-1 for GT/LT takes care of millisecond/second
+    // granularity mismatches between query bounds and catalog bounds
+    val minTimestamp = pushedPreds.collectFirst {
       case GreaterEqual(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst
+      case GreaterThan(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst.plusMillis(1)
     }
 
-    val max = pushedPreds.collectFirst {
+    val maxTimestamp = pushedPreds.collectFirst {
       case LessEqual(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst
+      case LessThan(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst.minusMillis(1)
     }
 
-    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1), min, max)
+    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1), minTimestamp, maxTimestamp)
 
     parts.zipWithIndex.flatMap { case (dbPartition, i) =>
       doPlan(table, info.partitionPrefix, cols, pushedPreds, hdxCols, dbPartition, i)

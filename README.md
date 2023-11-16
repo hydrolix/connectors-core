@@ -2,8 +2,12 @@
 
 ## Overview
 
-`connectors-core` is a library that collects Hydrolix-specific, but platform-agnostic code to be 
-used for building connectors for various big data platforms to read Hydrolix data.   
+`connectors-core` is a Scala library of Hydrolix-specific, but platform-agnostic code for building Hydrolix
+connectors for various JVM-ecosystem big data platforms, including:
+ * [Spark](https://github.com/hydrolix/spark-connector/)
+ * Trino coming soon!
+ 
+It doesn't do anything useful or interesting by itself!
 
 ## Components
 
@@ -13,25 +17,27 @@ partitions. Packaged in the JAR, [not open source](#proprietary)!
 
 ### Hydrolix Cluster
 A preexisting Hydrolix cluster; must be [version 3.40.5](https://docs.hydrolix.io/changelog/9-may-2023-v3404) or later.
-The connector must be able to access the Hydrolix API (typically on port 443) and the Clickhouse Native protocol
-(typically on port 8088 or 9440).
+Code using the library must be able to access the Hydrolix API (typically on port 443) and the Clickhouse HTTPS 
+protocol (typically on port 8088). Hydrolix also listens on the Clickhouse Native protocol on Port 9440, but the  
+Clickhouse JDBC library tries to launch a `clickhouse-client` binary under Docker when you try to use 9440, so let's
+just stick to HTTPS on port 8088. :)
 
 #### API
-The connector talks to the Hydrolix API at query planning time using a REST client to authenticate, and to retrieve
-database, table and column metadata. The connector does not use the API for query execution.
+The library talks to the **Hydrolix API** at query planning time using a REST client to authenticate, and to retrieve
+database, table and column metadata. The library does not use the API for query execution.
 
 #### Query Head
-The connector talks to the Hydrolix query head at query planning time using the Clickhouse JDBC driver to retrieve
-partition and column index metadata. The connector does not use the query head for query execution.
+The library talks to the **Hydrolix query head** at query planning time using the Clickhouse JDBC driver to retrieve
+partition and column index metadata. The library does not use the Hydrolix query cluster for query execution.
 
 ## Feature Set
 ### Query Optimizations
 The library enables support for the following query optimizations:
 
 #### Partition Pruning
-When the query has suitable predicates based on the timestamp and/or shard key, we can use them to eliminate partitions
-from consideration based on each partition’s min/max timestamps and shard key. In some cases this can be extremely
-effective, especially in high-selectivity queries (e.g. timestamp in a narrow range).
+When the query has suitable predicates based on the primary timestamp and/or shard key, we can use them to eliminate 
+partitions from consideration based on each partition’s min/max timestamps and shard key. In some cases this can be 
+extremely effective, especially in high-selectivity queries (e.g. where the primary timestamp is in a narrow range).
 
 #### Predicate Pushdown
 Suitable predicates that do simple comparisons between indexed fields and literals are evaluated by the low-level
@@ -74,9 +80,9 @@ The following are released under the [Apache 2.0 license](./licenses/Apache_Lice
 
 ### Proprietary
 * All files made available in this repository that are not identified above as being licensed under the Apache 2.0
-  license, including without limitation [`turbine_cmd`](./src/main/resources/linux-x86-64/turbine_cmd), may be used only
-  by users that have entered into a separate written agreement with us that contains licenses to use our software and
-  such use is subject to the terms of that separate written agreement.
+  license, including without limitation [`turbine_cmd`](./src/main/resources/linux-x86-64/turbine_cmd), may be used only by users that have entered into a 
+  separate written agreement with us that contains licenses to use our software and such use is subject to the terms of
+  that separate written agreement.
 
 ### Other
 Dependencies are used under a variety of open source licenses; see [NOTICE.md](./NOTICE.md)
@@ -93,10 +99,9 @@ system will take care of it.
 
 ### Operating System
 Currently, connectors based on this library will only run on recent AMD64/x86_64 Linux distros. Ubuntu 22.x, 23.x and 
-Fedora 38 work fine; Ubuntu 20.x definitely doesn't work; other distros MIGHT work. It DOES NOT work on macOS, because 
-it uses a native binary built from the C++ source tree, which can only target Linux at this time.
+Fedora 38 work fine; Ubuntu 20.x definitely doesn't work; other distros MIGHT work. 
 
-You can *build* the connector on macOS, it just won't run. Sorry.
+The library can _work_ on other OS's (including macOS) via Docker, but we don't support it for production use.
 
 ## Building
 
@@ -104,11 +109,30 @@ You can *build* the connector on macOS, it just won't run. Sorry.
 2. ```
    git clone git@github.com:hydrolix/connectors-core.git hydrolix-connectors-core && cd hydrolix-connectors-core
    ```
-3. Run `sbt -J-Xmx4g +publishLocal` to compile and build the connector jar files (for Scala 2.12 and 2.13)
+3. Run `sbt -J-Xmx4g +publishLocal` to compile and build the connectors-core jar files (for Scala 2.12 and 2.13)
 4. If the build succeeds, the jars can be found at:
-   * [./target/scala-2.12/hydrolix-connectors-core_2.12-0.3.2-SNAPSHOT.jar](./target/scala-2.12/hydrolix-connectors-core_2.12-0.3.2-SNAPSHOT.jar).
-   * [./target/scala-2.13/hydrolix-connectors-core_2.13-0.3.2-SNAPSHOT.jar](./target/scala-2.13/hydrolix-connectors-core_2.13-0.3.2-SNAPSHOT.jar).
-    
+   * [./target/scala-2.12/hydrolix-connectors-core_2.12-1.0.0-SNAPSHOT.jar](./target/scala-2.12/hydrolix-connectors-core_2.12-1.0.0-SNAPSHOT.jar).
+   * [./target/scala-2.13/hydrolix-connectors-core_2.13-1.0.0-SNAPSHOT.jar](./target/scala-2.13/hydrolix-connectors-core_2.13-1.0.0-SNAPSHOT.jar).
+
+## Configuration
+
+In its current form, this library has no entry point, since it's designed to be embedded in platform-specific 
+connectors. However, we'll summarize the configuration here; every connector based on this library will have a 
+different way of setting configuration parameters, but their meaning will always be the same:
+
+| Name               | Type              | Description                                                                                                                                                         |
+|--------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| API URL            | URL               | HTTP(s) URL of the Hydrolix API; normally ends with `/config/v1/` (including trailing slash)                                                                        |
+| JDBC URL           | JDBC URL          | JDBC URL of the Hydrolix query head, e.g. `jdbc:clickhouse://hdx.example.com:8088/_local?ssl=true.                                                                  |
+| Username           | Email address     | Username needed to login to the Hydrolix cluster; normally an email address                                                                                         |
+| Password           | String            | Password needed to login to the Hydrolix cluster                                                                                                                    |
+| Cloud Credential 1 | String            | First cloud credential. What to put here depends on the specific vendor, e.g.:<br/> * AWS: Access Key ID<br/>* GCS: Service Account Key file, gzipped then base64'd |
+| Cloud Credential 2 | String (optional) | Second cloud credential. Not used for GCS; secret key for AWS                                                                                                       |
+| Docker Image Name  | String (optional) | Name of a Docker image to use when launching the `turbine_cmd hdx_reader` child process.                                                                            |
+
+You can try running [ConnectorSmokeTest](./src/test/scala/io/hydrolix/connectors/ConnectorSmokeTest.scala) with 
+meaningful environment variables to check your configuration  
+
 ## Roadmap
 
 ### Dictionary Tables
