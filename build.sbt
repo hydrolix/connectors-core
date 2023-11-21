@@ -1,5 +1,4 @@
 ThisBuild / organization := "io.hydrolix"
-ThisBuild / version := "1.0.1-SNAPSHOT"
 ThisBuild / organizationHomepage := Some(url("https://hydrolix.io/"))
 ThisBuild / homepage := Some(url("https://github.com/hydrolix/connectors-core/"))
 ThisBuild / licenses := List(
