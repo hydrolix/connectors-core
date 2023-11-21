@@ -14,5 +14,5 @@
  * limitations under the License.
  */
 addSbtPlugin("com.github.sbt" % "sbt-release" % "1.1.0")
-addSbtPlugin("com.github.sbt" % "sbt-license-report" % "1.5.0")
-addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.1.2")
+addSbtPlugin("com.github.sbt" % "sbt-license-report" % "1.6.1")
+addSbtPlugin("com.github.sbt" % "sbt-pgp" % "2.2.1")

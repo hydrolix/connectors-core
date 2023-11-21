@@ -37,3 +37,27 @@ libraryDependencies := Seq(
   "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
   "com.h2database" % "h2" % "2.2.224" % Test,
 )
+
+credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials")
+
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/hydrolix/connectors-core"),
+    "scm:git@github.com:hydrolix/connectors-core.git"
+  )
+)
+ThisBuild / developers := List(
+  Developer(
+    id = "acruise",
+    name = "Alex Cruise",
+    email = "alex@hydrolix.io",
+    url = url("https://github.com/acruise")
+  )
+)
+ThisBuild / pomIncludeRepository := { _ => false }
+ThisBuild / publishTo := {
+  val nexus = "https://s01.oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+ThisBuild / publishMavenStyle := true
