@@ -61,3 +61,6 @@ ThisBuild / publishTo := {
   else Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 ThisBuild / publishMavenStyle := true
+
+releasePublishArtifactsAction := PgpKeys.publishSigned.value
+releaseCrossBuild := true
