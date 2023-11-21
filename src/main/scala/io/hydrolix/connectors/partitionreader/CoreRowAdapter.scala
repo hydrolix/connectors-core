@@ -68,7 +68,8 @@ object CoreRowAdapter extends RowAdapter[StructLiteral, ArrayLiteral[_], MapLite
     private val values = new java.util.ArrayList[Any]()
 
     override def set(pos: Int, value: Any): Unit = {
-      values.ensureCapacity(pos + 1)
+      values.ensureCapacity(pos+1) // this seems redundant with the next line, but it avoids repeated re-allocations
+      while (values.size() < pos+1) values.add(null)
       values.set(pos, value)
     }
 
