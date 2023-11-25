@@ -40,14 +40,14 @@ class ConnectorSmokeTest {
       LessEqual(getTimestamp, TimestampLiteral(now))
     ))
 
-    val partitions = HdxPushdown.planPartitions(info, HdxJdbcSession(info), table, StructType(StructField("timestamp", TimestampType(3))), List(pred))
+    val partitions = HdxPushdown.planPartitions(info, HdxJdbcSession(info), table, StructType(List(StructField("timestamp", TimestampType(3)))), List(pred))
 
     println(s"${partitions.size} partitions containing data with ${table.primaryKeyField} >= $fiveMinutesAgo")
 
     val storage = table.storages.getOrElse(partitions.head.storageId, sys.error(s"No storage #${partitions.head.storageId}"))
 
     println("Timestamp values from first partition:")
-    val reader = new RowPartitionReader[StructLiteral](info, storage, "timestamp", partitions.head, CoreRowAdapter, StructLiteral(Map(), StructType()))
+    val reader = new RowPartitionReader[StructLiteral](info, storage, "timestamp", partitions.head, CoreRowAdapter, StructLiteral(Map(), StructType(Nil)))
     while (reader.next()) {
       val row = reader.get()
       println(row)

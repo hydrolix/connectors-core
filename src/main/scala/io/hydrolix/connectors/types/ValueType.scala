@@ -49,7 +49,7 @@ object ValueType {
   private def struct[$: P] = P("struct<" ~/ (fieldname ~ ":" ~ valueType).rep(min = 1, sep = cs) ~ ">").map { fields =>
     StructType(fields.map {
       case (name, typ) => StructField(name, typ)
-    }: _*)
+    }.toList)
   }
 
   private def fieldname[$: P] = P("\"" ~ (CharPred(_ != '"') | escq).rep.! ~ "\"")

@@ -2,15 +2,18 @@ package io.hydrolix.connectors.expr
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
 
+import com.fasterxml.jackson.databind.node.ObjectNode
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+import io.hydrolix.connectors.JSON
+import io.hydrolix.connectors.partitionreader.CoreRowAdapter
 import io.hydrolix.connectors.types._
 
 class ValueTypesTest {
-  private val nestedStructType = StructType(StructField("nested.i", Int32Type), StructField("nested.s", StringType))
+  private val nestedStructType = StructType(List(StructField("nested.i", Int32Type), StructField("nested.s", StringType)))
 
-  private val structType = StructType(
+  private val structType = StructType(List(
     StructField("b", BooleanType),
     StructField("i8", Int8Type),
     StructField("u8", UInt8Type),
@@ -28,25 +31,25 @@ class ValueTypesTest {
     StructField("array[i32?]", ArrayType(Int32Type, true)),
     StructField("map[string, f64!]", MapType(StringType, Float64Type, false)),
     StructField("nested", nestedStructType)
-  )
+  ))
 
   private val structLiteral = StructLiteral(Map(
-    "b" -> BooleanLiteral.True,
-    "i8" -> Int8Literal(123),
-    "u8" -> UInt8Literal(234),
-    "i16" -> Int16Literal(31337),
-    "u16" -> UInt16Literal(65535),
-    "i32" -> Int32Literal(2 * 1024 * 1024),
-    "u32" -> UInt32Literal(4 * 1024 * 1024),
-    "i64" -> Int64Literal(2 * 1024 * 1024 * 1024),
-    "u64" -> UInt64Literal(4 * 1024 * 1024 * 1024),
-    "f32" -> Float32Literal(32.0f),
-    "f64" -> Float64Literal(64.0f),
-    "s" -> StringLiteral("hello world!"),
-    "d" -> DecimalLiteral(java.math.BigDecimal.valueOf(3.14159265)),
-    "array[i32!]" -> ArrayLiteral(List(1, 2, 3), Int32Type, false),
-    "array[i32?]" -> ArrayLiteral(List(10, null, 20, null, 30), Int32Type, true),
-    "map[string, f64!]" -> MapLiteral(Map("one" -> 1.0, "two" -> 2.0, "three" -> 3.0), StringType, Float64Type, false),
+    "b" -> true,
+    "i8" -> 123.toByte,
+    "u8" -> 234.toShort,
+    "i16" -> 31337.toShort,
+    "u16" -> 65535.toInt,
+    "i32" -> 2 * 1024 * 1024,
+    "u32" -> (4L * 1024 * 1024),
+    "i64" -> (2L * 1024 * 1024 * 1024),
+    "u64" -> java.math.BigDecimal.valueOf(4L * 1024 * 1024 * 1024),
+    "f32" -> 32.0f,
+    "f64" -> 64.0d,
+    "s" -> "hello world!",
+    "d" -> java.math.BigDecimal.valueOf(3.14159265),
+    "array[i32!]" -> List(1, 2, 3),
+    "array[i32?]" -> List(10, null, 20, null, 30),
+    "map[string, f64!]" -> Map("one" -> 1.0, "two" -> 2.0, "three" -> 3.0),
     "nested" -> StructLiteral(Map("nested.i" -> 123, "nested.s" -> "yolo"), nestedStructType)
   ), structType)
 
@@ -70,6 +73,34 @@ class ValueTypesTest {
       |"map[string, f64!]":map<string,float64,false>,
       |"nested":struct<"nested.i":int32,"nested.s":string>
       |>""".stripMargin.replace("\n", "")
+
+  private val rowJson =
+    """{
+      |  "b":true,
+      |  "i8":123,
+      |  "u8":234,
+      |  "i16":31337,
+      |  "u16":65535,
+      |  "i32":2097152,
+      |  "u32":4194304,
+      |  "i64":2147483648,
+      |  "u64":4294967296,
+      |  "f32":32.0,
+      |  "f64":64.0,
+      |  "s":"hello world!",
+      |  "d":3.14159265,
+      |  "array[i32!]":[1,2,3],
+      |  "array[i32?]":[10,null,20,null,30],
+      |  "map[string, f64!]":{
+      |    "one":1.0,
+      |    "two":2.0,
+      |    "three":3.0
+      |  },
+      |  "nested":{
+      |    "nested.i":123,
+      |    "nested.s":"yolo"
+      |   }
+      |}""".stripMargin
 
   @Test
   def `ValueType decls render OK`(): Unit = {
@@ -110,5 +141,13 @@ class ValueTypesTest {
     val structLiteral2 = ois.readObject().asInstanceOf[StructLiteral]
     println(structLiteral2)
     assertEquals(structLiteral, structLiteral2)
+  }
+
+  @Test
+  def `parse records to structs`(): Unit = {
+    val obj = JSON.objectMapper.readTree(rowJson).asInstanceOf[ObjectNode]
+    val row = CoreRowAdapter.row(-1, structType, obj)
+    println(row)
+    assertEquals(structLiteral, row)
   }
 }

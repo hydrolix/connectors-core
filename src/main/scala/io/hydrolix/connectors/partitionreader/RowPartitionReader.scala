@@ -19,6 +19,8 @@ final class RowPartitionReader[T <: AnyRef](         val           info: HdxConn
   override def outputFormat = "json"
 
   override def handleStdout(stdout: InputStream): Unit = {
+    var rowId = 0
+
     Using.Manager { use =>
       val reader = use(new BufferedReader(new InputStreamReader(stdout)))
       breakable {
@@ -28,9 +30,10 @@ final class RowPartitionReader[T <: AnyRef](         val           info: HdxConn
             stdoutQueue.put(doneSignal)
             break()
           } else {
+            rowId += 1
             expectedLines.incrementAndGet()
             val obj = JSON.objectMapper.readValue[ObjectNode](line)
-            stdoutQueue.put(parse.row(scan.schema, obj))
+            stdoutQueue.put(parse.row(rowId, scan.schema, obj))
           }
         }
       }

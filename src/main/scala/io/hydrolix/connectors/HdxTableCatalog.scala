@@ -76,7 +76,7 @@ final class HdxTableCatalog {
 
     StructType(cols.map { col =>
       StructField(col.name, col.`type`, false) // TODO nullability?
-    }: _*)
+    })
   }
 
   private def getTable(schema: StructType, properties: Map[String, String]): HdxTable = {

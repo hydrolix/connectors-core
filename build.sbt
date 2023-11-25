@@ -13,6 +13,8 @@ crossScalaVersions := List("2.12.18", "2.13.12")
 name := "hydrolix-connectors-core"
 
 javacOptions := Seq("-source", "11", "-target", "11")
+Compile / doc / scalacOptions ++= Seq("-no-link-warnings")
+Compile / scalacOptions ++= Seq("-deprecation")
 
 Test / fork := true
 
@@ -23,7 +25,7 @@ libraryDependencies := Seq(
   "com.google.guava" % "guava" % "32.0.0-jre",
   "com.lihaoyi" %% "fastparse" % "3.0.2",
 
-  "com.github.bigwheel" %% "util-backports" % "2.1",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0", // avoid deprecation warnings on JavaConversions
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.15.3",
   "com.fasterxml.jackson.module" % "jackson-module-parameter-names" % "2.15.3",
   "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % "2.15.3",

@@ -1,20 +1,20 @@
 package io.hydrolix.connectors.partitionreader
 
 import java.time.Instant
-import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 
 import com.fasterxml.jackson.databind.node.{BooleanNode, NumericNode, TextNode}
 
-import io.hydrolix.connectors.expr.{ArrayLiteral, MapLiteral, StructLiteral}
+import io.hydrolix.connectors.expr.StructLiteral
 import io.hydrolix.connectors.types._
 
-object CoreRowAdapter extends RowAdapter[StructLiteral, ArrayLiteral[_], MapLiteral[_, _]] {
+object CoreRowAdapter extends RowAdapter[StructLiteral, List[_], Map[_, _]] {
   type RB = CoreRowBuilder
   type AB = CoreArrayBuilder
   type MB = CoreMapBuilder
 
-  override def newRowBuilder(`type`: StructType) = new CoreRowBuilder(`type`)
+  override def newRowBuilder(`type`: StructType, rowId: Int) = new CoreRowBuilder(`type`)
   override def newArrayBuilder(`type`: ArrayType) = new CoreArrayBuilder(`type`)
   override def newMapBuilder(`type`: MapType) = new CoreMapBuilder(`type`)
 
@@ -37,12 +37,13 @@ object CoreRowAdapter extends RowAdapter[StructLiteral, ArrayLiteral[_], MapLite
       case Float64Type => n.doubleValue()
       case Int8Type => n.asInt().byteValue()
       case UInt8Type => n.asInt().shortValue()
-      case Int16Type => n.asInt().byteValue()
+      case Int16Type => n.asInt().shortValue()
       case UInt16Type => n.asInt()
       case Int32Type => n.intValue()
       case Int64Type => n.longValue()
       case UInt32Type => n.longValue()
       case UInt64Type => n.decimalValue()
+      case DecimalType(_,_) => n.decimalValue()
     }
   }
 
@@ -75,7 +76,7 @@ object CoreRowAdapter extends RowAdapter[StructLiteral, ArrayLiteral[_], MapLite
 
     override def setNull(pos: Int): Unit = ()
 
-    override def build: ArrayLiteral[_] = ArrayLiteral(values.asScala.toList, `type`.elementType)
+    override def build: List[_] = values.asScala.toList
   }
 
   class CoreMapBuilder(val `type`: MapType) extends MapBuilder {
@@ -85,6 +86,6 @@ object CoreRowAdapter extends RowAdapter[StructLiteral, ArrayLiteral[_], MapLite
 
     override def putNull(key: Any): Unit = ()
 
-    override def build: MapLiteral[_, _] = MapLiteral(values.toMap, `type`.keyType, `type`.valueType, `type`.valuesNullable)
+    override def build: Map[_, _] = values.toMap
   }
 }

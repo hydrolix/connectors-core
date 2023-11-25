@@ -1,4 +1,5 @@
 //noinspection TypeAnnotation
+//noinspection ScalaUnusedSymbol
 package io.hydrolix.connectors.expr
 
 import java.time.Instant
@@ -184,7 +185,7 @@ case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Li
     check(ordinal)
     values(ordinal) match {
       case bd: BigDecimal => bd // TODO what should we do about the precision & scale args?
-      case f: Float => BigDecimal(f)
+      case f: Float => BigDecimal(f.toDouble)
       case d: Double => BigDecimal(d)
       case b: Byte => BigDecimal(b)
       case s: Short => BigDecimal(s)

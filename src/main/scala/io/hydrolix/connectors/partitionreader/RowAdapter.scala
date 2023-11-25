@@ -1,6 +1,6 @@
 package io.hydrolix.connectors.partitionreader
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node._
@@ -33,8 +33,8 @@ abstract class RowAdapter[R, A, M] {
     def build: M
   }
 
-  def row(`type`: StructType, obj: ObjectNode): R = {
-    val rowBuilder = newRowBuilder(`type`)
+  def row(rowId: Int, `type`: StructType, obj: ObjectNode): R = {
+    val rowBuilder = newRowBuilder(`type`, rowId)
 
     `type`.fields.foreach { col =>
       val node = obj.get(col.name) // TODO can we be sure the names match exactly?
@@ -45,7 +45,7 @@ abstract class RowAdapter[R, A, M] {
     rowBuilder.build
   }
 
-  def newRowBuilder(`type`: StructType): RB
+  def newRowBuilder(`type`: StructType, rowId: Int): RB
 
   def newArrayBuilder(`type`: ArrayType): AB
 
@@ -99,6 +99,20 @@ abstract class RowAdapter[R, A, M] {
               }
             }
             m.build
+
+          case st @ StructType(fields) =>
+            val r = newRowBuilder(st, -1)
+
+            for (kv <- obj.fields().asScala) {
+              val name = kv.getKey
+
+              kv.getValue match {
+                case null => r.setNull(name)
+                case node if node.isNull => r.setNull(name)
+                case other => r.setField(name, node2Any(other, st.byName(name).`type`))
+              }
+            }
+            r.build
 
           case other => sys.error(s"TODO JSON map needs conversion from $other to $dt")
         }

@@ -7,11 +7,7 @@ import org.slf4j.LoggerFactory
 import io.hydrolix.connectors.types._
 import io.hydrolix.connectors.expr._
 
-/**
- * TODO:
- *  - see if multi-part names will ever show up (e.g. in a join?); that would break [[GetField]] but hopefully only
- *    in a way that would allow fewer pushdown opportunities rather than incorrect results.
- */
+//noinspection ScalaWeakerAccess,ScalaUnusedSymbol
 object HdxPushdown {
   private val log = LoggerFactory.getLogger(getClass)
   import ComparisonOp._
