@@ -11,6 +11,8 @@ import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.slf4j.LoggerFactory
 
+import io.hydrolix.connectors.api._
+
 final class HdxApiSession(info: HdxConnectionInfo) {
   private val logger = LoggerFactory.getLogger(getClass)
 

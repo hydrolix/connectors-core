@@ -2,6 +2,7 @@ package io.hydrolix.connectors
 
 import java.util.UUID
 
+import io.hydrolix.connectors.api.HdxStorageSettings
 import io.hydrolix.connectors.expr.Expr
 import io.hydrolix.connectors.types.StructType
 

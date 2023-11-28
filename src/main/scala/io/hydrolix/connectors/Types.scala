@@ -1,5 +1,6 @@
 package io.hydrolix.connectors
 
+import io.hydrolix.connectors.api.HdxColumnDatatype
 import io.hydrolix.connectors.types._
 
 //noinspection NameBooleanParameters

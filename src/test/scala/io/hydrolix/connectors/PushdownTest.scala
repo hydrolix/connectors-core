@@ -11,6 +11,7 @@ import org.h2.jdbcx.JdbcDataSource
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+import io.hydrolix.connectors.api.HdxColumnDatatype
 import io.hydrolix.connectors.expr._
 import io.hydrolix.connectors.types.{Int32Type, StringType, TimestampType, UInt32Type}
 

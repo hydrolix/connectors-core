@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.{JsonFormat, OptBoolean}
 import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy
 import com.fasterxml.jackson.databind.annotation.JsonNaming
 
+import io.hydrolix.connectors.api.HdxColumnDatatype
 import io.hydrolix.connectors.types.ValueType
 
 /*

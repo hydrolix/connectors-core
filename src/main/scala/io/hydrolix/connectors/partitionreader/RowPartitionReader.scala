@@ -1,12 +1,13 @@
 package io.hydrolix.connectors.partitionreader
 
-import com.fasterxml.jackson.databind.node.ObjectNode
-
 import java.io.{BufferedReader, InputStream, InputStreamReader}
 import scala.util.Using
 import scala.util.control.Breaks.{break, breakable}
 
-import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan, HdxStorageSettings, JSON}
+import com.fasterxml.jackson.databind.node.ObjectNode
+
+import io.hydrolix.connectors.api.HdxStorageSettings
+import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan, JSON}
 
 final class RowPartitionReader[T <: AnyRef](         val           info: HdxConnectionInfo,
                                                      val        storage: HdxStorageSettings,

@@ -12,10 +12,11 @@ import scala.util.Using.resource
 import scala.util.control.Breaks.{break, breakable}
 import scala.util.{Try, Using}
 
-import com.google.common.io.{ByteStreams, MoreFiles, RecursiveDeleteOption}
+import com.google.common.io.ByteStreams
 import org.slf4j.LoggerFactory
 
-import io.hydrolix.connectors.{Etc, HdxConnectionInfo, HdxOutputColumn, HdxPartitionScanPlan, HdxPushdown, HdxStorageSettings, JSON, RmRfThread, spawn}
+import io.hydrolix.connectors.api.{HdxOutputColumn, HdxStorageSettings}
+import io.hydrolix.connectors.{Etc, HdxConnectionInfo, HdxPartitionScanPlan, HdxPushdown, JSON, RmRfThread, spawn}
 
 object HdxPartitionReader {
   private val log = LoggerFactory.getLogger(getClass)

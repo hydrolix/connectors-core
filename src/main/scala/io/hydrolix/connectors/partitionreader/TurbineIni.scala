@@ -5,7 +5,7 @@ import scala.util.Using
 import com.google.common.io.ByteStreams
 import org.slf4j.LoggerFactory
 
-import io.hydrolix.connectors.HdxStorageSettings
+import io.hydrolix.connectors.api.HdxStorageSettings
 
 object TurbineIni {
   private val log = LoggerFactory.getLogger(getClass)
