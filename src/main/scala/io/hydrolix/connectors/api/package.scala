@@ -21,12 +21,26 @@ package object api {
                                 index: Boolean,
                               primary: Boolean,
                          indexOptions: Option[JsonNode] = None,
-                               source: Option[JsonNode] = None,
+                               source: Option[HdxColumnSource] = None,
                                format: Option[String] = None,
                            resolution: Option[String] = None,
                               default: Option[String] = None,
                                script: Option[String] = None,
                              catchAll: Boolean = false,
                                ignore: Boolean = false,
-                             elements: Option[List[HdxColumnDatatype]] = None)
+                             elements: Option[List[HdxColumnDatatype]] = None,
+                               limits: Option[HdxColumnLimits] = None)
+
+  case class HdxColumnLimits(min: Option[JsonNode],
+                             max: Option[JsonNode],
+                            past: Option[String],
+                          future: Option[String],
+                             pad: Option[String],
+                          action: Option[String])
+
+  case class HdxColumnSource(fromInputField: Option[String], // TODO it'd be nice to make this single fromInputFields
+                            fromInputFields: Option[List[String]],
+                             fromInputIndex: Option[Int],
+                           fromJsonPointers: Option[List[String]],
+                         fromAutomaticValue: Option[String])
 }

@@ -29,7 +29,7 @@ final class HdxApiSession(info: HdxConnectionInfo) {
     allStoragesCache.get(0)
   }
 
-  private def database(db: String): Option[HdxProject] = {
+  def database(db: String): Option[HdxProject] = {
     // This is where a DB name collision in multiple orgs would fail
     databases().findSingle(_.name == db)
   }
@@ -42,6 +42,11 @@ final class HdxApiSession(info: HdxConnectionInfo) {
   def views(db: String, table: String): List[HdxView] = {
     val tbl = this.table(db, table).getOrElse(throw NoSuchTableException(db, table))
     allViewsByTableCache.get(tbl.project -> tbl.uuid)
+  }
+
+  def transforms(db: String, table: String): List[HdxTransform] = {
+    val tbl = this.table(db, table).getOrElse(throw NoSuchTableException(db, table))
+    allTransformsByTableCache.get(tbl.project -> tbl.uuid)
   }
 
   def defaultView(db: String, table: String): HdxView = {
@@ -128,11 +133,14 @@ final class HdxApiSession(info: HdxConnectionInfo) {
       })
   }
 
-  implicit class HttpRequestGoodies(req: HttpUriRequest) {
-    def withAuthToken(): HttpUriRequest = {
-      req.addHeader("Authorization", s"Bearer ${authRespCache.get(0).authToken.accessToken}")
-      req
+  def addAuthToken(req: HttpUriRequest): HttpUriRequest = {
+    req.also {
+      _.addHeader("Authorization", s"Bearer ${authRespCache.get(0).authToken.accessToken}")
     }
+  }
+
+  implicit class HttpRequestGoodies(req: HttpUriRequest) {
+    def withAuthToken(): HttpUriRequest = addAuthToken(req)
   }
 
   private val allTablesCache: LoadingCache[UUID, List[HdxApiTable]] = {
@@ -189,6 +197,28 @@ final class HdxApiSession(info: HdxConnectionInfo) {
             try {
               val viewsResp = client.execute(viewsGet, new BasicHttpClientResponseHandler())
               JSON.objectMapper.readValue[List[HdxView]](viewsResp)
+            } catch {
+              case e: HttpResponseException if e.getStatusCode == 404 => Nil
+            }
+          }
+        }
+      })
+  }
+
+  private val allTransformsByTableCache: LoadingCache[(UUID, UUID), List[HdxTransform]] = {
+    Caffeine.newBuilder()
+      .expireAfterWrite(Duration.ofHours(1))
+      .build[(UUID, UUID), List[HdxTransform]](new CacheLoader[(UUID, UUID), List[HdxTransform]]() {
+        override def load(key: (UUID, UUID)): List[HdxTransform] = {
+          val (projectId, tableId) = key
+          val orgIds = authRespCache.get(0).orgs.map(_.uuid).toSet
+          orgIds.toList.flatMap { orgId =>
+            val transformsGet = new HttpGet(info.apiUrl.resolve(s"orgs/$orgId/projects/$projectId/tables/$tableId/transforms/"))
+              .withAuthToken()
+
+            try {
+              val transformsResp = client.execute(transformsGet, new BasicHttpClientResponseHandler())
+              JSON.objectMapper.readValue[List[HdxTransform]](transformsResp)
             } catch {
               case e: HttpResponseException if e.getStatusCode == 404 => Nil
             }
