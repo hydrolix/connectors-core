@@ -23,7 +23,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.apache.hc.core5.http.ClassicHttpResponse
 import org.apache.hc.core5.http.io.entity.{EntityUtils, StringEntity}
 
-import io.hydrolix.connectors.TestUtils.connectionInfo
+import io.hydrolix.connectors.TestUtils._
 import io.hydrolix.connectors.api._
 
 object CreateTableAndTransform extends App {
@@ -37,7 +37,7 @@ object CreateTableAndTransform extends App {
 
   private val client = HttpClients.createDefault()
 
-  val apiTableOut = api.table(dbName, tableName).getOrElse {
+  val apiTable = api.table(dbName, tableName).getOrElse {
     val newTable = HdxApiTable(
       uuid = UUID.randomUUID(),
       project = project.uuid,
@@ -73,80 +73,18 @@ object CreateTableAndTransform extends App {
     })
   }
 
-  val scalarColumns = HdxValueType.values().toList.filter(vt => vt.isScalar && vt != HdxValueType.DateTime64).map { vt =>
-    HdxOutputColumn(
-      vt.getHdxName,
-      HdxColumnDatatype(
-        `type` = vt,
-        index = vt != HdxValueType.Double,
-        primary = vt == HdxValueType.DateTime,
-        resolution = vt match {
-          case HdxValueType.DateTime => Some("ms")
-          case HdxValueType.Epoch => Some("ms")
-          case _ => None
-        },
-        format = vt match {
-          case HdxValueType.DateTime => Some("2006-01-02T15:04:05.999Z")
-          case HdxValueType.Epoch => Some("ms")
-          case _ => None
-        }
-      )
-    )
-  }
-
-  val arrayColumns = scalarColumns.map { oc =>
-    HdxOutputColumn(
-      oc.name + "[]",
-      HdxColumnDatatype(
-        `type` = HdxValueType.Array,
-        index = oc.datatype.index,
-        primary = false,
-        elements = Some(List(oc.datatype))
-      )
-    )
-  }
-
-  val mapColumns = scalarColumns.map { oc =>
-    HdxOutputColumn(
-      oc.name + "{}",
-      HdxColumnDatatype(
-        `type` = HdxValueType.Map,
-        index = oc.datatype.index,
-        primary = false,
-        elements = Some(List(
-          HdxColumnDatatype(HdxValueType.String, index = true, primary = false),
-          oc.datatype
-        ))
-      )
-    )
-  }
-
-  val nestedArrayColumns = arrayColumns.map { oc =>
-    HdxOutputColumn(
-      oc.name + "[]",
-      HdxColumnDatatype(
-        `type` = HdxValueType.Array,
-        index = oc.datatype.index,
-        primary = false,
-        elements = Some(List(
-          oc.datatype
-        ))
-      )
-    )
-  }
-
   val transform = HdxTransform(
     uuid = UUID.randomUUID(),
     name = s"$dbName.$tableName",
     settings = HdxTransformSettings(
       isDefault = true,
-      outputColumns = scalarColumns ++ arrayColumns ++ mapColumns ++ nestedArrayColumns
+      outputColumns = allColumns
     ),
     `type` = HdxTransformType.json,
-    table = apiTableOut.uuid
+    table = apiTable.uuid
   )
 
-  val postTransformReq = new HttpPost(info.apiUrl.resolve(s"orgs/${project.org}/projects/${project.uuid}/tables/${apiTableOut.uuid}/transforms/")).also { post =>
+  val postTransformReq = new HttpPost(info.apiUrl.resolve(s"orgs/${project.org}/projects/${project.uuid}/tables/${apiTable.uuid}/transforms/")).also { post =>
     api.addAuthToken(post)
     val transformPostBody = JSON.objectMapper.writeValueAsString(transform)
     println(s"Transform POST body: $transformPostBody")
