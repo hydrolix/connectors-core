@@ -62,7 +62,7 @@ object TestUtils {
         `type` = HdxValueType.Array,
         index = oc.datatype.index,
         primary = false,
-        elements = Some(List(oc.datatype))
+        elements = Some(List(oc.datatype.copy(primary = false)))
       )
     )
   }
@@ -76,7 +76,7 @@ object TestUtils {
         primary = false,
         elements = Some(List(
           HdxColumnDatatype(HdxValueType.String, index = true, primary = false),
-          oc.datatype
+          oc.datatype.copy(primary = false)
         ))
       )
     )

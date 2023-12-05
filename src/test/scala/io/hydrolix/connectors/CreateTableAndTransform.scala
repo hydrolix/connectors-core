@@ -22,22 +22,63 @@ import org.apache.hc.client5.http.classic.methods.HttpPost
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.apache.hc.core5.http.ClassicHttpResponse
 import org.apache.hc.core5.http.io.entity.{EntityUtils, StringEntity}
+import org.slf4j.LoggerFactory
 
 import io.hydrolix.connectors.TestUtils._
 import io.hydrolix.connectors.api._
 
-object CreateTableAndTransform extends App {
-  val info = connectionInfo()
-  val dbName = args(0)
-  val tableName = args(1)
-
-  val api = new HdxApiSession(info)
-
-  val project = api.database(dbName).getOrElse(sys.error(s"Database $dbName doesn't exist"))
-
+object CreateTableAndTransform {
+  private val logger = LoggerFactory.getLogger(getClass)
   private val client = HttpClients.createDefault()
 
-  val apiTable = api.table(dbName, tableName).getOrElse {
+  def main(args: Array[String]): Unit = {
+    val info = connectionInfo()
+    val dbName = args(0)
+    val tableName = args(1)
+
+    val api = new HdxApiSession(info)
+
+    val project = api.database(dbName).getOrElse(sys.error(s"Database $dbName doesn't exist"))
+
+    val apiTable = api.table(dbName, tableName).getOrElse(createTable(info, api, project, tableName))
+
+    val transform = HdxTransform(
+      uuid = UUID.randomUUID(),
+      name = s"$dbName.$tableName",
+      settings = HdxTransformSettings(
+        isDefault = true,
+        outputColumns = allColumns
+      ),
+      `type` = HdxTransformType.json,
+      table = apiTable.uuid
+    )
+
+    val postTransformReq = new HttpPost(info.apiUrl.resolve(s"orgs/${project.org}/projects/${project.uuid}/tables/${apiTable.uuid}/transforms/")).also { post =>
+      api.addAuthToken(post)
+      val transformPostBody = JSON.objectMapper.writeValueAsString(transform)
+      logger.info(s"Transform POST body: $transformPostBody")
+      post.setEntity(new StringEntity(transformPostBody))
+      post.setHeader("Content-Type", "application/json")
+    }
+
+    val postTransformResp = client.execute(postTransformReq, { resp: ClassicHttpResponse =>
+      val body = EntityUtils.toString(resp.getEntity)
+      if (resp.getCode / 100 == 2) {
+        JSON.objectMapper.readValue[HdxTransform](body).also { created =>
+          logger.info(s"Transform #${created.uuid} was created successfully")
+        }
+      } else {
+        logger.info(s"Create Transform response code was ${resp.getCode}: ${resp.getReasonPhrase}")
+        logger.info(s"Create Transform response body was $body")
+        sys.exit(1)
+      }
+    })
+
+    logger.info(postTransformResp.toString)
+
+  }
+
+  private def createTable(info: HdxConnectionInfo, api: HdxApiSession, project: HdxProject, tableName: String): HdxApiTable = {
     val newTable = HdxApiTable(
       uuid = UUID.randomUUID(),
       project = project.uuid,
@@ -51,7 +92,7 @@ object CreateTableAndTransform extends App {
     )
 
     val newTableBody = JSON.objectMapper.writeValueAsString(newTable)
-    println(newTableBody)
+    logger.info(newTableBody)
 
     val createTablePost = new HttpPost(info.apiUrl.resolve(s"orgs/${project.org}/projects/${project.uuid}/tables/")).also { post =>
       api.addAuthToken(post)
@@ -63,47 +104,13 @@ object CreateTableAndTransform extends App {
       val body = EntityUtils.toString(resp.getEntity)
       if (resp.getCode / 100 == 2) {
         JSON.objectMapper.readValue[HdxApiTable](body).also { created =>
-          println(s"Table #${created.uuid} created successfully")
+          logger.info(s"Table #${created.uuid} created successfully")
         }
       } else {
-        println(s"Create Table response code was ${resp.getCode}: ${resp.getReasonPhrase}")
-        println(s"Create Table response body was $body")
+        logger.info(s"Create Table response code was ${resp.getCode}: ${resp.getReasonPhrase}")
+        logger.info(s"Create Table response body was $body")
         sys.exit(1)
       }
     })
   }
-
-  val transform = HdxTransform(
-    uuid = UUID.randomUUID(),
-    name = s"$dbName.$tableName",
-    settings = HdxTransformSettings(
-      isDefault = true,
-      outputColumns = allColumns
-    ),
-    `type` = HdxTransformType.json,
-    table = apiTable.uuid
-  )
-
-  val postTransformReq = new HttpPost(info.apiUrl.resolve(s"orgs/${project.org}/projects/${project.uuid}/tables/${apiTable.uuid}/transforms/")).also { post =>
-    api.addAuthToken(post)
-    val transformPostBody = JSON.objectMapper.writeValueAsString(transform)
-    println(s"Transform POST body: $transformPostBody")
-    post.setEntity(new StringEntity(transformPostBody))
-    post.setHeader("Content-Type", "application/json")
-  }
-
-  val postTransformResp = client.execute(postTransformReq, { resp: ClassicHttpResponse =>
-    val body = EntityUtils.toString(resp.getEntity)
-    if (resp.getCode / 100 == 2) {
-      JSON.objectMapper.readValue[HdxTransform](body).also { created =>
-        println(s"Transform #${created.uuid} was created successfully")
-      }
-    } else {
-      println(s"Create Transform response code was ${resp.getCode}: ${resp.getReasonPhrase}")
-      println(s"Create Transform response body was $body")
-      sys.exit(1)
-    }
-  })
-
-  println(postTransformResp)
 }
