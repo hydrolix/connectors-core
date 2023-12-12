@@ -16,11 +16,13 @@
 
 package io.hydrolix.connectors.types
 
+import java.math.BigInteger
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.{math => jm}
 import scala.collection.mutable
+import scala.math.Ordered.orderingToOrdered
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node._
@@ -74,7 +76,7 @@ object Int16Type extends ScalarType("int16") {
   override def toJson(value: Short): JsonNode = ShortNode.valueOf(value)
   override def fromJson(node: JsonNode): Either[String, Short] = {
     node match {
-      case n: NumericNode if n.shortValue() >= Short.MinValue && n.shortValue() <= Short.MaxValue => Right(n.shortValue())
+      case n: NumericNode if n.intValue() >= Short.MinValue && n.intValue() <= Short.MaxValue => Right(n.shortValue())
       case _: NumericNode => failRange(node)
       case _ => fail(node) // TODO maybe convert other kinds of node?
     }
@@ -85,7 +87,7 @@ object Int32Type extends ScalarType("int32") {
   override def toJson(value: Int): JsonNode = IntNode.valueOf(value)
   override def fromJson(node: JsonNode): Either[String, Int] = {
     node match {
-      case n: NumericNode if n.intValue() >= Int.MinValue && n.intValue() <= Int.MaxValue => Right(n.intValue())
+      case n: NumericNode if n.longValue() >= Int.MinValue && n.longValue() <= Int.MaxValue => Right(n.intValue())
       case _: NumericNode => failRange(node)
       case _ => fail(node) // TODO maybe convert other kinds of node?
     }
@@ -94,9 +96,12 @@ object Int32Type extends ScalarType("int32") {
 object Int64Type extends ScalarType("int64") {
   override type T = Long
   override def toJson(value: Long): JsonNode = LongNode.valueOf(value)
+
+  private val min = jm.BigInteger.valueOf(Long.MinValue)
+  private val max = jm.BigInteger.valueOf(Long.MaxValue)
   override def fromJson(node: JsonNode): Either[String, Long] = {
     node match {
-      case n: NumericNode if n.longValue() >= Long.MinValue && n.longValue() <= Long.MaxValue => Right(n.longValue())
+      case n: NumericNode if n.bigIntegerValue() >= min && n.bigIntegerValue() <= max => Right(n.longValue())
       case _: NumericNode => failRange(node)
       case _ => fail(node) // TODO maybe convert other kinds of node?
     }
@@ -146,19 +151,19 @@ object UInt32Type extends ScalarType("uint32") {
 }
 
 object UInt64Type extends ScalarType("uint64") {
-  override type T = jm.BigDecimal
+  override type T = jm.BigInteger
 
-  override def toJson(value: jm.BigDecimal): JsonNode = DecimalNode.valueOf(value)
+  override def toJson(value: jm.BigInteger): JsonNode = BigIntegerNode.valueOf(value)
 
-  private val max = new jm.BigDecimal(2L).pow(64)
-  override def fromJson(node: JsonNode): Either[String, jm.BigDecimal] = {
+  private val max = BigInteger.valueOf(2L).pow(64)
+  override def fromJson(node: JsonNode): Either[String, jm.BigInteger] = {
     node match {
       case n: NumericNode =>
-        val dec = n.decimalValue()
-        if (dec.compareTo(max) > 0) {
+        val big = n.bigIntegerValue()
+        if (big < jm.BigInteger.ZERO || big > max) {
           failRange(node)
         } else {
-          Right(dec)
+          Right(big)
         }
       case _ => Left(s"Can't convert $node to uint64") // TODO maybe convert other kinds of node?
     }

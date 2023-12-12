@@ -17,6 +17,7 @@
 package io.hydrolix.connectors
 
 import java.time.Instant
+import scala.math.Ordered.orderingToOrdered
 
 import org.slf4j.LoggerFactory
 
@@ -167,18 +168,18 @@ object HdxPushdown {
 
         op match {
           case EQ => // prune if timestamp IS OUTSIDE partition min/max
-            timestamp.compareTo(partitionMin) < 0 || timestamp.compareTo(partitionMax) > 0
+            timestamp < partitionMin || timestamp > partitionMax
 
           case NE => // prune if timestamp IS INSIDE partition min/max
-            timestamp.compareTo(partitionMin) >= 0 && timestamp.compareTo(partitionMax) <= 0
+            timestamp >= partitionMin && timestamp <= partitionMax
 
           case GE | GT => // prune if timestamp IS AFTER partition max
             // TODO seriously consider whether > and >= should be treated the same given mismatched time grain
-            timestamp.compareTo(partitionMax) >= 0
+            timestamp >= partitionMax
 
           case LE | LT => // prune if timestamp IS BEFORE partition min
             // TODO seriously consider whether < and <= should be treated the same given mismatched time grain
-            timestamp.compareTo(partitionMin) <= 0
+            timestamp <= partitionMin
 
           case _ =>
             // Shouldn't happen because the pattern guard already checked in timeOps

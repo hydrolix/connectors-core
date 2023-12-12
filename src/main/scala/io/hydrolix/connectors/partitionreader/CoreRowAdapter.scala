@@ -58,8 +58,9 @@ object CoreRowAdapter extends RowAdapter[Row, Seq[AnyRef], Map[_, _]] {
       case Int32Type => n.intValue()
       case Int64Type => n.longValue()
       case UInt32Type => n.longValue()
-      case UInt64Type => n.decimalValue()
+      case UInt64Type => n.bigIntegerValue()
       case DecimalType(_,_) => n.decimalValue()
+      case t @ TimestampType(_) => t.fromJson(n).getOrElse(sys.error(s"Can't convert JSON number $n to $t"))
     }
   }
 

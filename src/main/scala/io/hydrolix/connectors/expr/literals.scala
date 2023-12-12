@@ -127,7 +127,7 @@ case class TimestampLiteral(value: Instant) extends Literal[Instant] {
 
 case class ArrayLiteral[T](override val  value: Seq[T],
                            override val `type`: ArrayType,
-                                         nulls: BitSet)
+                                         nulls: BitSet = BitSet.empty)
   extends Literal[Seq[T]]
 {
   if (!`type`.elementsNullable && nulls.nonEmpty) sys.error("Null value(s) found in non-nullable array")

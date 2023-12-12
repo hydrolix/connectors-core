@@ -17,10 +17,14 @@
 package io.hydrolix.connectors.expr
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.math.BigInteger
+import java.time.Instant
+import java.time.temporal.ChronoUnit
+import java.{math => jm}
 
-import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.{BigIntegerNode, ObjectNode}
 import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.junit.{Assert, Test}
 
 import io.hydrolix.connectors.JSON
 import io.hydrolix.connectors.partitionreader.CoreRowAdapter
@@ -34,6 +38,12 @@ class ValueTypesTest {
   private val arrayOfStringNullable: ArrayType = ArrayType(StringType, true)
 
   private val structType = StructType(List(
+    StructField("timestamp0", TimestampType.Seconds),
+    StructField("timestamp3", TimestampType.Millis),
+    StructField("timestamp6", TimestampType.Micros),
+    StructField("timestamp0n", TimestampType.Seconds),
+    StructField("timestamp3n", TimestampType.Millis),
+    StructField("timestamp6n", TimestampType.Micros),
     StructField("b", BooleanType),
     StructField("i8", Int8Type),
     StructField("u8", UInt8Type),
@@ -56,6 +66,12 @@ class ValueTypesTest {
   ))
 
   private val structRow = structType.mapToRow(Map(
+    "timestamp0" -> Instant.EPOCH,
+    "timestamp3" -> Instant.EPOCH.plusMillis(123),
+    "timestamp6" -> Instant.EPOCH.plus(123456, ChronoUnit.MICROS),
+    "timestamp0n" -> Instant.EPOCH,
+    "timestamp3n" -> Instant.EPOCH.plusMillis(123),
+    "timestamp6n" -> Instant.EPOCH.plus(123456, ChronoUnit.MICROS),
     "b" -> true,
     "i8" -> 123.toByte,
     "u8" -> 234.toShort,
@@ -64,11 +80,11 @@ class ValueTypesTest {
     "i32" -> 2 * 1024 * 1024,
     "u32" -> (4L * 1024 * 1024),
     "i64" -> (2L * 1024 * 1024 * 1024),
-    "u64" -> java.math.BigDecimal.valueOf(4L * 1024 * 1024 * 1024),
+    "u64" -> jm.BigInteger.valueOf(4L * 1024 * 1024 * 1024),
     "f32" -> 32.0f,
     "f64" -> 64.0d,
     "s" -> "hello world!",
-    "d" -> java.math.BigDecimal.valueOf(3.14159265),
+    "d" -> jm.BigDecimal.valueOf(3.14159265),
     "array[i32!]" -> List(1, 2, 3),
     "array[i32?]" -> List(10, null, 20, null, 30),
     "array[array[string?]!]" -> List(
@@ -81,6 +97,12 @@ class ValueTypesTest {
 
   private val structTypeName =
     """struct<
+      |"timestamp0":timestamp(0),
+      |"timestamp3":timestamp(3),
+      |"timestamp6":timestamp(6),
+      |"timestamp0n":timestamp(0),
+      |"timestamp3n":timestamp(3),
+      |"timestamp6n":timestamp(6),
       |"b":boolean,
       |"i8":int8,
       |"u8":uint8,
@@ -104,6 +126,12 @@ class ValueTypesTest {
 
   private val rowJson =
     """{
+      |  "timestamp0":"1970-01-01T00:00:00Z",
+      |  "timestamp3":"1970-01-01T00:00:00.123Z",
+      |  "timestamp6":"1970-01-01T00:00:00.123456Z",
+      |  "timestamp0n":0,
+      |  "timestamp3n":123,
+      |  "timestamp6n":123456,
       |  "b":true,
       |  "i8":123,
       |  "u8":234,
@@ -192,5 +220,33 @@ class ValueTypesTest {
     val rowJson = structType.toJson(structRow)
     val parsed = structType.fromJson(rowJson)
     assertEquals(Right(structRow), parsed)
+  }
+
+  @Test
+  def `try out-of-range values`(): Unit = {
+    val badValues = Map(
+      Int8Type -> List(-129, 128), // signed byte
+      Int16Type -> List(-32769, 32768), // signed short
+      Int32Type -> List(Int.MinValue - 1L, Int.MaxValue + 1L), // signed int32
+      Int64Type -> List(
+        jm.BigDecimal.valueOf(Long.MinValue).subtract(jm.BigDecimal.ONE),
+        jm.BigDecimal.valueOf(Long.MaxValue).add(jm.BigDecimal.ONE)
+      ), // signed int64
+      UInt8Type -> List(-1, 256), // unsigned u8, stored in a short
+      UInt16Type -> List(-1, 65537), // unsigned u16, stored in an int
+      UInt32Type -> List(-1, (1L << 32) + 1), // unsigned u32, stored in a long
+      UInt64Type -> List(-1, new jm.BigDecimal(2L).pow(64).add(jm.BigDecimal.ONE)), // unsigned u64, stored in a BigDecimal
+    )
+
+    for ((typ, values) <- badValues) {
+      for (value <- values) {
+        val num = value.asInstanceOf[Number]
+        val node = BigIntegerNode.valueOf(new BigInteger(num.toString))
+        typ.fromJson(node) match {
+          case Right(ok) => Assert.fail(s"Expected conversion failure of ${typ.decl} = $value, got $ok")
+          case Left(_) => () // expected failure
+        }
+      }
+    }
   }
 }
