@@ -18,6 +18,7 @@ package io.hydrolix
 
 import java.time.Instant
 import java.util.UUID
+import scala.collection.mutable.ListBuffer
 import scala.sys.process.{Process, ProcessIO}
 
 import com.google.common.io.ByteStreams
@@ -45,6 +46,22 @@ package object connectors {
 
     def findExactlyOne(f: A => Boolean, what: String): A = {
       findSingle(f, what).getOrElse(sys.error(s"Expected to find exactly one $what"))
+    }
+
+    def splitEithers[L,R](implicit ev: A <:< Either[L,R]): (Seq[L], Seq[R]) = {
+      var ls: ListBuffer[L] = null // optimize allocation in happy path
+      val rs = ListBuffer[R]()
+
+      for (a <- underlying) {
+        ev(a) match {
+          case Left(l) =>
+            if (ls == null) ls = ListBuffer[L]()
+            ls += l
+          case Right(r) => rs += r
+        }
+      }
+
+      (if (ls == null) Nil else ls.toSeq, rs.toSeq)
     }
   }
 

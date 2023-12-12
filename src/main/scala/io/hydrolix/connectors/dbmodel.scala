@@ -24,7 +24,7 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy
 import com.fasterxml.jackson.databind.annotation.JsonNaming
 
 import io.hydrolix.connectors.api.HdxColumnDatatype
-import io.hydrolix.connectors.types.ValueType
+import io.hydrolix.connectors.types.ConcreteType
 
 /*
  * These are Scala representations of the metadata visible from a Hydrolix JDBC connection.
@@ -39,7 +39,7 @@ import io.hydrolix.connectors.types.ValueType
 case class HdxColumnInfo(name: String,
                       hdxType: HdxColumnDatatype,
                      nullable: Boolean,
-                       `type`: ValueType,
+                       `type`: ConcreteType,
                       indexed: Int)
 
 

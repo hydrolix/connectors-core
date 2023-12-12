@@ -63,11 +63,11 @@ class ConnectorSmokeTest {
     val storage = table.storages.getOrElse(partitions.head.storageId, sys.error(s"No storage #${partitions.head.storageId}"))
 
     println("Timestamp values from first partition:")
-    val reader = new RowPartitionReader[StructLiteral](info, storage, "timestamp", partitions.head, CoreRowAdapter, StructLiteral(Map(), StructType(Nil)))
+    val reader = new RowPartitionReader[Row](info, storage, "timestamp", partitions.head, CoreRowAdapter, Row.empty)
     while (reader.next()) {
       val row = reader.get()
       println(row)
-      val l = row.getLong(0)
+      val l = row.values(0)
       println(l)
     }
   }

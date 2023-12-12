@@ -89,7 +89,7 @@ object HdxPushdown {
         // Comparison between the primary key field and a timestamp literal:
         // 2 because FilterInterpreter doesn't look at the primary key field
         2
-      case In(GetField(`primaryKeyField`, TimestampType(_)), ArrayLiteral(_, TimestampType(_), _)) =>
+      case In(GetField(`primaryKeyField`, TimestampType(_)), ArrayLiteral(_, _, _)) =>
         // primaryKeyField IN (timestamp literals):
         // 2 because FilterInterpreter doesn't look at the primary key field
         2
@@ -98,7 +98,7 @@ object HdxPushdown {
         // Note: this is a 2 even when shardKeyField == string because in the rare case of a hash collision we still
         // need to compare the raw strings.
         2
-      case In(GetField(field, StringType), ArrayLiteral(_, StringType, _)) if mShardKeyField.contains(field) =>
+      case In(GetField(field, StringType), ArrayLiteral(_, _, _)) if mShardKeyField.contains(field) =>
         // shardKeyField IN (string literals)
         2
       case Comparison(GetField(f, StringType), op, StringLiteral(_)) if hdxOps.contains(op) =>
@@ -202,7 +202,7 @@ object HdxPushdown {
             sys.error(s"Unsupported comparison operator for shard key: $op")
         }
 
-      case In(f@GetField(`primaryKeyField`, TimestampType(_)), ArrayLiteral(ts, TimestampType(_), _)) =>
+      case In(f@GetField(`primaryKeyField`, TimestampType(_)), ArrayLiteral(ts, ArrayType(TimestampType(_), _), _)) =>
         // [`timeField` IN (<timestampLiterals>)]
         val comparisons = ts.map { t =>
           Equal(f, TimestampLiteral(t.asInstanceOf[Instant]))
@@ -211,7 +211,7 @@ object HdxPushdown {
         // This partition can be pruned if _every_ literal IS NOT within this partition's time bounds
         !results.contains(false)
 
-      case In(gf@GetField(f, StringType), ArrayLiteral(ss, StringType, _)) if mShardKeyField.contains(f) =>
+      case In(gf@GetField(f, StringType), ArrayLiteral(ss, ArrayType(StringType, _), _)) if mShardKeyField.contains(f) =>
         // [`shardKeyField` IN (<stringLiterals>)]
         val comparisons = ss.map(s => Equal(gf, StringLiteral(s.asInstanceOf[String])))
         val results = comparisons.map(prunePartition(primaryKeyField, mShardKeyField, _, partitionMin, partitionMax, partitionShardKey))

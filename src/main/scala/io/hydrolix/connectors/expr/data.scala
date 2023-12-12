@@ -27,7 +27,7 @@ case class IsNull[T](expr: Expr[T]) extends Expr[Boolean] {
   override val children = List(expr)
 }
 
-case class In[T](left: Expr[T], rights: Expr[List[T]]) extends Expr[Boolean] {
+case class In[T](left: Expr[T], rights: Expr[Seq[T]]) extends Expr[Boolean] {
   override val `type` = BooleanType
   override val children = List(left, rights)
 }

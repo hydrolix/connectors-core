@@ -34,7 +34,7 @@ object Types {
    *
    * @return (sparkType, hdxColumnDataType, nullable?)
    */
-  def decodeClickhouseType(s: String): (ValueType, HdxColumnDatatype, Boolean) = {
+  def decodeClickhouseType(s: String): (ConcreteType, HdxColumnDatatype, Boolean) = {
     s.toLowerCase match {
       case "int8" => (Int8Type, HdxColumnDatatype(HdxValueType.Int8, true, false), false) // signed 8-bit => byte
       case "uint8" => (UInt8Type, HdxColumnDatatype(HdxValueType.UInt8, true, false), false) // unsigned 8-bit => short
@@ -81,7 +81,7 @@ object Types {
     }
   }
 
-  def hdxToValueType(htype: HdxColumnDatatype): ValueType = {
+  def hdxToValueType(htype: HdxColumnDatatype): ConcreteType = {
     htype.`type` match {
       case HdxValueType.Int8 => Int8Type
       case HdxValueType.UInt8 => UInt8Type

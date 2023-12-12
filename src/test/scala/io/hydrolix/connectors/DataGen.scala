@@ -62,6 +62,7 @@ object DataGen {
             case Some("s") | Some("second") => LongNode.valueOf(when.getEpochSecond)
             case Some("ms") => LongNode.valueOf(when.toEpochMilli)
             case Some("us") => LongNode.valueOf(instantToMicros(when))
+            case other => sys.error(s"Unsupported Epoch format: $other")
           }
 
         case HdxValueType.Array =>
@@ -89,6 +90,8 @@ object DataGen {
               obj.replace(k, v)
             }
           }
+
+        case _ => sys.error(s"Unsupported Hydrolix type: ${hcol.`type`}")
       }
     }
   }
@@ -104,6 +107,7 @@ object DataGen {
       case Some("ms") =>
         val when = rng.longs(1L, minDateTime64.toEpochMilli, maxDateTime64.toEpochMilli).max.getAsLong
         Instant.ofEpochMilli(when)
+      case other => sys.error(s"Unsupported datetime resolution $other")
     }
 
     when.truncatedTo(ChronoUnit.MILLIS)

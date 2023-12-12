@@ -22,10 +22,10 @@ import scala.jdk.CollectionConverters._
 
 import com.fasterxml.jackson.databind.node.{BooleanNode, NumericNode, TextNode}
 
-import io.hydrolix.connectors.expr.StructLiteral
+import io.hydrolix.connectors.expr.Row
 import io.hydrolix.connectors.types._
 
-object CoreRowAdapter extends RowAdapter[StructLiteral, List[_], Map[_, _]] {
+object CoreRowAdapter extends RowAdapter[Row, Seq[AnyRef], Map[_, _]] {
   type RB = CoreRowBuilder
   type AB = CoreArrayBuilder
   type MB = CoreMapBuilder
@@ -78,30 +78,38 @@ object CoreRowAdapter extends RowAdapter[StructLiteral, List[_], Map[_, _]] {
 
     override def setField(name: String, value: Any): Unit = values(name) = value
 
-    override def build: StructLiteral = StructLiteral(values.toMap, `type`)
+    override def build = {
+      Row(`type`.fields.map { f =>
+        values(f.name)
+      })
+    }
   }
 
   class CoreArrayBuilder(val `type`: ArrayType) extends ArrayBuilder {
-    private val values = new java.util.ArrayList[Any]()
+    private val values = new java.util.ArrayList[AnyRef]()
+    private val nulls = mutable.BitSet()
 
     override def set(pos: Int, value: Any): Unit = {
       values.ensureCapacity(pos+1) // this seems redundant with the next line, but it avoids repeated re-allocations
       while (values.size() < pos+1) values.add(null)
-      values.set(pos, value)
+      values.set(pos, value.asInstanceOf[AnyRef])
     }
 
-    override def setNull(pos: Int): Unit = ()
+    override def setNull(pos: Int): Unit = nulls(pos) = true
 
-    override def build: List[_] = values.asScala.toList
+    override def build = values.asScala.toSeq
   }
 
   class CoreMapBuilder(val `type`: MapType) extends MapBuilder {
     private val values = mutable.HashMap[Any, Any]()
+    private val nulls = mutable.HashSet[Any]()
 
     override def put(key: Any, value: Any): Unit = values.put(key, value)
 
-    override def putNull(key: Any): Unit = ()
+    override def putNull(key: Any): Unit = nulls += key
 
-    override def build: Map[_, _] = values.toMap
+    override def build: Map[_, _] = {
+      (values ++ nulls.map(_ -> null)).toMap
+    }
   }
 }

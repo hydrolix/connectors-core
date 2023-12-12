@@ -16,8 +16,21 @@
 
 package io.hydrolix.connectors.types
 
+import com.fasterxml.jackson.databind.JsonNode
+
 trait ValueType extends Serializable {
+  /** the JVM type of these values */
+  type T
+
   def decl: String
+}
+
+/** For now this is just a marker to exclude AnyType */
+trait ConcreteType extends ValueType {
+  def toJson(value: T): JsonNode
+  def fromJson(node: JsonNode): Either[String, T]
+  def unsafeToJson(value: Any): JsonNode = toJson(value.asInstanceOf[T])
+  def fail(node: JsonNode): Either[String, T] = Left(s"Can't convert $node to $decl")
 }
 
 object ValueType {
@@ -31,7 +44,9 @@ object ValueType {
     }
   }
 
-  private def valueType[$: P]: P[ValueType] = P(any | scalar | map | array | struct)
+  private def valueType[$: P]: P[ValueType] = P(any | concreteType)
+
+  private def concreteType[$ : P]: P[ConcreteType] = P(scalar | map | array | struct)
 
   private def any[$: P] = P("<any>").map(_ => AnyType)
 
@@ -54,15 +69,18 @@ object ValueType {
       .getOrElse(Fail(s"Unknown scalar type: $name"))
   }
 
-  private def map[$: P] = P("map<" ~/ valueType ~ cs ~ valueType ~ cs ~ boolean ~ ">").map {
+  // TODO maybe allow map<concrete, any> sometimes?
+  private def map[$: P] = P("map<" ~/ concreteType ~ cs ~ concreteType ~ cs ~ boolean ~ ">").map {
     case (kt, vt, nullable) => MapType(kt, vt, nullable)
   }
 
-  private def array[$: P] = P("array<" ~/ valueType ~ cs ~ boolean ~ ">").map {
+  // TODO maybe allow array<any> sometimes?
+  private def array[$: P] = P("array<" ~/ concreteType ~ cs ~ boolean ~ ">").map {
     case (elt, nullable) => ArrayType(elt, nullable)
   }
 
-  private def struct[$: P] = P("struct<" ~/ (fieldname ~ ":" ~ valueType).rep(min = 1, sep = cs) ~ ">").map { fields =>
+  // TODO maybe allow struct fields of type <any> sometimes?
+  private def struct[$: P] = P("struct<" ~/ (fieldname ~ ":" ~ concreteType).rep(min = 1, sep = cs) ~ ">").map { fields =>
     StructType(fields.map {
       case (name, typ) => StructField(name, typ)
     }.toList)
@@ -77,5 +95,6 @@ object ValueType {
 }
 
 object AnyType extends ValueType {
+  override type T = Any
   val decl = "<any>"
 }

@@ -19,6 +19,8 @@
 package io.hydrolix.connectors.expr
 
 import java.time.Instant
+import java.{math => jm}
+import scala.collection.immutable.BitSet
 
 import io.hydrolix.connectors.instantToMicros
 import io.hydrolix.connectors.types._
@@ -42,6 +44,7 @@ object BooleanLiteral {
   val True = BooleanLiteral(true)
   val False = BooleanLiteral(false)
 }
+
 case class StringLiteral(value: String) extends Literal[String] {
   override val `type` = StringType
 }
@@ -49,9 +52,11 @@ case class StringLiteral(value: String) extends Literal[String] {
 case class Int8Literal(value: Byte) extends Literal[Byte] {
   override val `type` = Int8Type
 }
+
 case class Int16Literal(value: Short) extends Literal[Short] {
   override val `type` = Int16Type
 }
+
 case class Int32Literal(value: Int) extends Literal[Int] {
   override val `type` = Int32Type
 }
@@ -59,6 +64,7 @@ object Int32Literal {
   val `0` = Int32Literal(0)
   val `1` = Int32Literal(1)
 }
+
 case class Int64Literal(value: Long) extends Literal[Long] {
   override val `type` = Int64Type
 }
@@ -66,12 +72,15 @@ object Int64Literal {
   val `0l` = Int64Literal(0L)
   val `1l` = Int64Literal(1L)
 }
+
 case class UInt8Literal(value: Short) extends Literal[Short] {
   override val `type` = UInt8Type
 }
+
 case class UInt16Literal(value: Int) extends Literal[Int] {
   override val `type` = UInt16Type
 }
+
 case class UInt32Literal(value: Long) extends Literal[Long] {
   override val `type` = UInt32Type
 }
@@ -80,12 +89,12 @@ object UInt32Literal {
   val `1u` = UInt32Literal(1)
 }
 
-case class UInt64Literal(value: BigDecimal) extends Literal[BigDecimal] {
+case class UInt64Literal(value: jm.BigDecimal) extends Literal[jm.BigDecimal] {
   override val `type` = UInt64Type
 }
 object UInt64Literal {
-  val `0lu` = UInt64Literal(0)
-  val `1lu` = UInt64Literal(1)
+  val `0lu` = UInt64Literal(jm.BigDecimal.ZERO)
+  val `1lu` = UInt64Literal(jm.BigDecimal.ONE)
 }
 
 case class Float32Literal(value: Float) extends Literal[Float] {
@@ -104,7 +113,7 @@ object Float64Literal {
   val `1d` = Float64Literal(1d)
 }
 
-case class DecimalLiteral(value: java.math.BigDecimal) extends Literal[java.math.BigDecimal] {
+case class DecimalLiteral(value: jm.BigDecimal) extends Literal[jm.BigDecimal] {
   override val `type` = DecimalType(value.precision(), value.scale())
 }
 
@@ -116,26 +125,41 @@ case class TimestampLiteral(value: Instant) extends Literal[Instant] {
   override val `type` = TimestampType(6)
 }
 
-case class ArrayLiteral[E](value: List[E], elementType: ValueType, elementsNullable: Boolean = false) extends Literal[List[E]] {
-  override val `type` = ArrayType(elementType, elementsNullable)
-}
+case class ArrayLiteral[T](override val  value: Seq[T],
+                           override val `type`: ArrayType,
+                                         nulls: BitSet)
+  extends Literal[Seq[T]]
+{
+  if (!`type`.elementsNullable && nulls.nonEmpty) sys.error("Null value(s) found in non-nullable array")
 
-case class MapLiteral[K, V](value: Map[K, V], keyType: ValueType, valueType: ValueType, valuesNullable: Boolean = false) extends Literal[Map[K,V]] {
-  override val `type` = MapType(keyType, valueType, valuesNullable)
-}
+  override def toString: String = {
+    val sb = new StringBuilder()
+    sb.append("[")
 
-case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Literal[Map[String, Any]] {
-  @transient lazy val values = `type`.fields.map { sf =>
-    value.getOrElse(sf.name, null)
+    val vs = value.zipWithIndex.map {
+      case (v, i) => if (nulls(i)) "null" else v.toString
+    }
+
+    sb.append(vs.mkString(","))
+    sb.append("]")
+    sb.toString()
   }
+}
 
+case class Row(values: Seq[Any]) extends Serializable
+
+object Row {
+  val empty = Row(Nil)
+}
+
+case class StructLiteral(value: Row, `type`: StructType) extends Literal[Row] {
   private def check(pos: Int): Unit = {
-    require(pos <= values.size - 1, s"Field index $pos out of range, must be ${values.size - 1}")
+    require(pos <= value.values.size - 1, s"Field index $pos out of range, must be ${value.values.size - 1}")
   }
 
   def getLong(pos: Int): Long = {
     check(pos)
-    values(pos) match {
+    value.values(pos) match {
       case i: Instant => instantToMicros(i)
       case b: Byte => b.toLong
       case s: Short => s.toLong
@@ -147,26 +171,26 @@ case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Li
 
   def isNullAt(ordinal: Int): Boolean = {
     check(ordinal)
-    values(ordinal) == null
+    value.values(ordinal) == null
   }
 
   def getBoolean(ordinal: Int): Boolean = {
     check(ordinal)
-    values(ordinal) match {
+    value.values(ordinal) match {
       case b: Boolean => b
     }
   }
 
   def getByte(ordinal: Int): Byte = {
     check(ordinal)
-    values(ordinal) match {
+    value.values(ordinal) match {
       case b: Byte => b
     }
   }
 
   def getShort(ordinal: Int): Short = {
     check(ordinal)
-    values(ordinal) match {
+    value.values(ordinal) match {
       case b: Byte => b.toShort
       case s: Short => s
     }
@@ -174,7 +198,7 @@ case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Li
 
   def getInt(ordinal: Int): Int = {
     check(ordinal)
-    values(ordinal) match {
+    value.values(ordinal) match {
       case b: Byte => b.toInt
       case s: Short => s.toInt
       case c: Char => c.toInt
@@ -184,14 +208,14 @@ case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Li
 
   def getFloat(ordinal: Int): Float = {
     check(ordinal)
-    values(ordinal) match {
+    value.values(ordinal) match {
       case f: Float => f
     }
   }
 
   def getDouble(ordinal: Int): Double = {
     check(ordinal)
-    values(ordinal) match {
+    value.values(ordinal) match {
       case f: Float => f
       case d: Double => d
     }
@@ -199,7 +223,7 @@ case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Li
 
   def getDecimal(ordinal: Int, precision: Int, scale: Int): BigDecimal = {
     check(ordinal)
-    values(ordinal) match {
+    value.values(ordinal) match {
       case bd: BigDecimal => bd // TODO what should we do about the precision & scale args?
       case f: Float => BigDecimal(f.toDouble)
       case d: Double => BigDecimal(d)
@@ -213,7 +237,7 @@ case class StructLiteral(value: Map[String, Any], `type`: StructType) extends Li
 
   def getString(ordinal: Int): String = {
     check(ordinal)
-    values(ordinal) match {
+    value.values(ordinal) match {
       case s: String => s
       case other => other.toString // TODO do we actually want this?
     }

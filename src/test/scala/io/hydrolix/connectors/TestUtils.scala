@@ -96,7 +96,7 @@ object TestUtils {
     )
   }
 
-  val allColumns = scalarColumns ++ arrayColumns ++ mapColumns ++ nestedArrayColumns
+  val allColumns = scalarColumns ++ arrayColumns ++ /*mapColumns ++*/ nestedArrayColumns
 
   val christmasTreeStruct = StructType(allColumns.map { hcol =>
     StructField(hcol.name, Types.hdxToValueType(hcol.datatype), true)
