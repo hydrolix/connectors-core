@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.hydrolix.connectors.partitionreader
+package io.hydrolix.connectors.data
 
 import java.time.Instant
 import scala.collection.mutable
@@ -22,7 +22,6 @@ import scala.jdk.CollectionConverters._
 
 import com.fasterxml.jackson.databind.node.{BooleanNode, NumericNode, TextNode}
 
-import io.hydrolix.connectors.expr.Row
 import io.hydrolix.connectors.types._
 
 object CoreRowAdapter extends RowAdapter[Row, Seq[AnyRef], Map[_, _]] {

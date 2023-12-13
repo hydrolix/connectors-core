@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.hydrolix.connectors.partitionreader
+package io.hydrolix.connectors.data
 
 import scala.jdk.CollectionConverters._
 
@@ -116,7 +116,7 @@ abstract class RowAdapter[R, A, M] {
             }
             m.build
 
-          case st @ StructType(fields) =>
+          case st @ StructType(_) =>
             val r = newRowBuilder(st, -1)
 
             for (kv <- obj.fields().asScala) {

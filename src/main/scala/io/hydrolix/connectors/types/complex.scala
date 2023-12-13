@@ -25,7 +25,7 @@ import scala.jdk.CollectionConverters._
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode, TextNode, ValueNode}
 
-import io.hydrolix.connectors.expr.Row
+import io.hydrolix.connectors.data.Row
 import io.hydrolix.connectors.{Etc, JSON}
 
 sealed trait ComplexType extends ConcreteType

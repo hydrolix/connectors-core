@@ -27,7 +27,7 @@ import org.junit.Assert.assertEquals
 import org.junit.{Assert, Test}
 
 import io.hydrolix.connectors.JSON
-import io.hydrolix.connectors.partitionreader.CoreRowAdapter
+import io.hydrolix.connectors.data.{CoreRowAdapter, Row}
 import io.hydrolix.connectors.types._
 
 class ValueTypesTest {

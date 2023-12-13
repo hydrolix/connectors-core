@@ -22,8 +22,9 @@ import java.time.temporal.ChronoUnit
 import org.junit.{Ignore, Test}
 
 import io.hydrolix.connectors.TestUtils.connectionInfo
+import io.hydrolix.connectors.data.{CoreRowAdapter, Row}
 import io.hydrolix.connectors.expr._
-import io.hydrolix.connectors.partitionreader.{CoreRowAdapter, RowPartitionReader}
+import io.hydrolix.connectors.partitionreader.RowPartitionReader
 import io.hydrolix.connectors.types.{StructField, StructType, TimestampType}
 
 class ConnectorSmokeTest {

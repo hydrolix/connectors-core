@@ -22,7 +22,7 @@ import java.time.Instant
 import java.{math => jm}
 import scala.collection.immutable.BitSet
 
-import io.hydrolix.connectors.instantToMicros
+import io.hydrolix.connectors.data.Row
 import io.hydrolix.connectors.types._
 
 trait Literal[+T] extends Expr[T] {
@@ -146,100 +146,4 @@ case class ArrayLiteral[T](override val  value: Seq[T],
   }
 }
 
-case class Row(values: Seq[Any]) extends Serializable
-
-object Row {
-  val empty = Row(Nil)
-}
-
-case class StructLiteral(value: Row, `type`: StructType) extends Literal[Row] {
-  private def check(pos: Int): Unit = {
-    require(pos <= value.values.size - 1, s"Field index $pos out of range, must be ${value.values.size - 1}")
-  }
-
-  def getLong(pos: Int): Long = {
-    check(pos)
-    value.values(pos) match {
-      case i: Instant => instantToMicros(i)
-      case b: Byte => b.toLong
-      case s: Short => s.toLong
-      case i: Int => i.toLong
-      case l: Long => l
-      case bd: BigDecimal => bd.toLongExact
-    }
-  }
-
-  def isNullAt(ordinal: Int): Boolean = {
-    check(ordinal)
-    value.values(ordinal) == null
-  }
-
-  def getBoolean(ordinal: Int): Boolean = {
-    check(ordinal)
-    value.values(ordinal) match {
-      case b: Boolean => b
-    }
-  }
-
-  def getByte(ordinal: Int): Byte = {
-    check(ordinal)
-    value.values(ordinal) match {
-      case b: Byte => b
-    }
-  }
-
-  def getShort(ordinal: Int): Short = {
-    check(ordinal)
-    value.values(ordinal) match {
-      case b: Byte => b.toShort
-      case s: Short => s
-    }
-  }
-
-  def getInt(ordinal: Int): Int = {
-    check(ordinal)
-    value.values(ordinal) match {
-      case b: Byte => b.toInt
-      case s: Short => s.toInt
-      case c: Char => c.toInt
-      case i: Int => i
-    }
-  }
-
-  def getFloat(ordinal: Int): Float = {
-    check(ordinal)
-    value.values(ordinal) match {
-      case f: Float => f
-    }
-  }
-
-  def getDouble(ordinal: Int): Double = {
-    check(ordinal)
-    value.values(ordinal) match {
-      case f: Float => f
-      case d: Double => d
-    }
-  }
-
-  def getDecimal(ordinal: Int, precision: Int, scale: Int): BigDecimal = {
-    check(ordinal)
-    value.values(ordinal) match {
-      case bd: BigDecimal => bd // TODO what should we do about the precision & scale args?
-      case f: Float => BigDecimal(f.toDouble)
-      case d: Double => BigDecimal(d)
-      case b: Byte => BigDecimal(b)
-      case s: Short => BigDecimal(s)
-      case c: Char => BigDecimal(c)
-      case i: Int => BigDecimal(i)
-      case l: Long => BigDecimal(l)
-    }
-  }
-
-  def getString(ordinal: Int): String = {
-    check(ordinal)
-    value.values(ordinal) match {
-      case s: String => s
-      case other => other.toString // TODO do we actually want this?
-    }
-  }
-}
+case class StructLiteral(value: Row, `type`: StructType) extends Literal[Row]

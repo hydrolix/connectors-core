@@ -23,6 +23,7 @@ import scala.util.control.Breaks.{break, breakable}
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 import io.hydrolix.connectors.api.HdxStorageSettings
+import io.hydrolix.connectors.data.RowAdapter
 import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan, JSON}
 
 final class RowPartitionReader[T <: AnyRef](         val           info: HdxConnectionInfo,
