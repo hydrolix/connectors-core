@@ -16,8 +16,11 @@
 
 package io.hydrolix.connectors
 
-import com.fasterxml.jackson.databind.MapperFeature
+import scala.jdk.CollectionConverters._
+
 import com.fasterxml.jackson.databind.json.JsonMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.{JsonNode, MapperFeature}
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.scala.{ClassTagExtensions, DefaultScalaModule}
 
@@ -27,4 +30,12 @@ object JSON {
     .addModule(new JavaTimeModule())
     .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS) // For HdxValueType mostly, since `double` and `boolean` are taken
     .build() :: ClassTagExtensions
+
+  implicit class ObjectNodeStuff(val obj: ObjectNode) extends AnyVal {
+    def asMap(): Map[String, JsonNode] = {
+      obj.fieldNames().asScala.map { k =>
+        k -> obj.get(k)
+      }.toMap
+    }
+  }
 }

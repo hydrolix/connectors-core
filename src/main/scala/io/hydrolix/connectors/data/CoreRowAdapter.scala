@@ -17,6 +17,7 @@
 package io.hydrolix.connectors.data
 
 import java.time.Instant
+import java.{util => ju}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
@@ -59,6 +60,7 @@ object CoreRowAdapter extends RowAdapter[Row, Seq[AnyRef], Map[_, _]] {
       case UInt32Type => n.longValue()
       case UInt64Type => n.bigIntegerValue()
       case DecimalType(_,_) => n.decimalValue()
+      case BooleanType => n.intValue() != 0
       case t @ TimestampType(_) => t.fromJson(n).getOrElse(sys.error(s"Can't convert JSON number $n to $t"))
     }
   }
@@ -86,7 +88,7 @@ object CoreRowAdapter extends RowAdapter[Row, Seq[AnyRef], Map[_, _]] {
   }
 
   class CoreArrayBuilder(val `type`: ArrayType) extends ArrayBuilder {
-    private val values = new java.util.ArrayList[AnyRef]()
+    private val values = new ju.ArrayList[AnyRef]()
     private val nulls = mutable.BitSet()
 
     override def set(pos: Int, value: Any): Unit = {
