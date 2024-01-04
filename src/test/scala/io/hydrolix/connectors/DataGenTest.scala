@@ -21,7 +21,7 @@ import java.util.Random
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-import io.hydrolix.connectors.TestUtils.christmasTreeStruct
+import io.hydrolix.connectors.TestUtils.christmasTreeStructNoMaps
 
 class DataGenTest {
   @Test
@@ -33,7 +33,7 @@ class DataGenTest {
   private def chonk(rng: Random, num: Int): String = {
     val s = new StringBuilder()
     for (_ <- 0 until num) {
-      val obj = DataGen(christmasTreeStruct, false, rng)
+      val obj = DataGen(christmasTreeStructNoMaps, false, rng)
       s.append(JSON.objectMapper.writeValueAsString(obj))
     }
     s.toString()

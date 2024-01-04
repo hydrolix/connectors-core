@@ -16,6 +16,8 @@
 
 package io.hydrolix.connectors
 
+import java.time.Instant
+
 import com.fasterxml.jackson.annotation.{JsonIgnoreProperties, JsonInclude}
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.databind.JsonNode
@@ -46,6 +48,13 @@ package object api {
                                ignore: Boolean = false,
                              elements: Option[List[HdxColumnDatatype]] = None,
                                limits: Option[HdxColumnLimits] = None)
+
+  object HdxColumnDatatype {
+    val minDateTime = Instant.EPOCH
+    val maxDateTime = Instant.parse("2106-02-07T06:28:15.000Z")
+    val minDateTime64 = Instant.parse("1900-01-01T00:00:00.000Z")
+    val maxDateTime64 = Instant.parse("2299-12-31T00:00:00.000Z")
+  }
 
   case class HdxColumnLimits(min: Option[JsonNode],
                              max: Option[JsonNode],

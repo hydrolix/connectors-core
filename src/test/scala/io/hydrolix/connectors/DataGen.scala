@@ -26,15 +26,11 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node._
 
 import io.hydrolix.connectors.api.HdxColumnDatatype
+import io.hydrolix.connectors.api.HdxColumnDatatype.{maxDateTime, maxDateTime64, minDateTime, minDateTime64}
 import io.hydrolix.connectors.types._
 
 object DataGen {
-  val minDateTime = Instant.EPOCH
-  val maxDateTime = Instant.parse("2106-02-07T06:28:15.000Z")
-  val minDateTime64 = Instant.parse("1900-01-01T00:00:00.000Z")
-  val maxDateTime64 = Instant.parse("2299-12-31T00:00:00.000Z")
-
-  def apply(hcol: HdxColumnDatatype, nullable: Boolean, rng: Random): JsonNode = {
+  def value(hcol: HdxColumnDatatype, nullable: Boolean, rng: Random): JsonNode = {
     if (nullable && rng.nextDouble() < 0.1) {
       // TODO maybe make the null fraction customizable
       NullNode.instance
@@ -62,6 +58,7 @@ object DataGen {
             case Some("s") | Some("second") => LongNode.valueOf(when.getEpochSecond)
             case Some("ms") => LongNode.valueOf(when.toEpochMilli)
             case Some("us") => LongNode.valueOf(instantToMicros(when))
+            case Some("ns") => LongNode.valueOf(instantToNanos(when))
             case other => sys.error(s"Unsupported Epoch format: $other")
           }
 
@@ -69,7 +66,7 @@ object DataGen {
           val len = rng.nextInt(8)
           val elt = hcol.elements.get.head
           val values = List.fill(len) {
-            DataGen(
+            DataGen.value(
               elt,
               elt.`type` != HdxValueType.Array, // nested arrays are secretly not nullable
               rng
@@ -83,7 +80,7 @@ object DataGen {
         case HdxValueType.Map =>
           val len = rng.nextInt(8)
           val keys = List.fill(len)(DataGen(StringType, false, rng)).map(_.asInstanceOf[TextNode].asText())
-          val values = List.fill(len)(DataGen(hcol.elements.get(1), true, rng))
+          val values = List.fill(len)(DataGen.value(hcol.elements.get(1), true, rng))
 
           JSON.objectMapper.createObjectNode().also { obj =>
             for ((k, v) <- keys.zip(values)) {
@@ -92,6 +89,18 @@ object DataGen {
           }
 
         case _ => sys.error(s"Unsupported Hydrolix type: ${hcol.`type`}")
+      }
+    }
+  }
+
+  def apply(columns: List[api.HdxOutputColumn], count: Int, seed: Long = 0): List[ObjectNode] = {
+    val rng = new Random(seed)
+
+    List.fill(count) {
+      JSON.objectMapper.createObjectNode().also { obj =>
+        for (hcol <- columns) {
+          obj.replace(hcol.name, DataGen.value(hcol.datatype, !hcol.datatype.primary, rng))
+        }
       }
     }
   }

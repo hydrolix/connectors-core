@@ -32,7 +32,7 @@ object JSON {
     .build() :: ClassTagExtensions
 
   implicit class ObjectNodeStuff(val obj: ObjectNode) extends AnyVal {
-    def asMap(): Map[String, JsonNode] = {
+    def asMap: Map[String, JsonNode] = {
       obj.fieldNames().asScala.map { k =>
         k -> obj.get(k)
       }.toMap

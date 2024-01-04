@@ -204,14 +204,10 @@ case class DecimalType(precision: Int, scale: Int) extends ScalarType(s"decimal(
   }
 }
 
-/**
- * [[java.time.Instant]] supports nanos in theory, but in practice, on many platforms the three least significant digits
- * are always zeros, so we won't try to promise nanos support
- */
 case class TimestampType private (precision: Int) extends ScalarType(s"timestamp($precision)") {
   override type T = Instant
-  require(precision >= 0, "Timestamp precision must be >= 0 (seconds) and <= 6 (microseconds)")
-  require(precision <= 6, "Implementation limitation: maximum timestamp precision is 6 (microseconds)")
+  require(precision >= 0, "Timestamp precision must be >= 0 (seconds) and <= 9 (nanoseconds)")
+  require(precision <= 9, "Implementation limitation: maximum timestamp precision is 9 (nanoseconds)")
 
   override def toJson(value: Instant): JsonNode = {
     val truncated = precision match {
@@ -235,6 +231,7 @@ case class TimestampType private (precision: Int) extends ScalarType(s"timestamp
           case 0 => Right(Instant.ofEpochSecond(l))
           case 3 => Right(Instant.ofEpochMilli(l))
           case 6 => Right(connectors.microsToInstant(l))
+          case 9 => Right(connectors.nanosToInstant(l))
           case other => Left(s"Unsupported timestamp precision $other")
         }
       case _ => fail(node)
@@ -246,4 +243,5 @@ object TimestampType {
   val Seconds = TimestampType(0)
   val Millis = TimestampType(3)
   val Micros = TimestampType(6)
+  val Nanos = TimestampType(9)
 }

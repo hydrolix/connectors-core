@@ -111,9 +111,22 @@ package object connectors {
     (sec * 1000000) + (nano / 1000)
   }
 
+  def instantToNanos(inst: Instant): Long = {
+    val sec = inst.getEpochSecond
+    val nano = inst.getNano
+    (sec * 1000000000) + nano
+  }
+
   def microsToInstant(micros: Long): Instant = {
     val sec = micros / 1000000
     val micro = micros % 1000000
     Instant.ofEpochSecond(sec, micro * 1000)
+  }
+
+  def nanosToInstant(nanos: Long): Instant = {
+    val sec = nanos / 1000000000
+    val nano = nanos % 1000000000
+
+    Instant.ofEpochSecond(sec, nano)
   }
 }
