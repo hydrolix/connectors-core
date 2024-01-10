@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Hydrolix Inc.
+ * Copyright (c) 2023-2024 Hydrolix Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,16 +26,14 @@ import io.hydrolix.connectors.api.HdxStorageSettings
 import io.hydrolix.connectors.data.RowAdapter
 import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan, JSON}
 
-final class RowPartitionReader[T <: AnyRef](         val           info: HdxConnectionInfo,
-                                                     val        storage: HdxStorageSettings,
-                                                     val primaryKeyName: String,
-                                                     val           scan: HdxPartitionScanPlan,
-                                                     val          parse: RowAdapter[T, _, _],
-                                            override val     doneSignal: T)
-  extends HdxPartitionReader[T]
+final class RowPartitionReader[T >: Null <: AnyRef](         val           info: HdxConnectionInfo,
+                                                             val        storage: HdxStorageSettings,
+                                                             val primaryKeyName: String,
+                                                             val           scan: HdxPartitionScanPlan,
+                                                             val          parse: RowAdapter[T, _, _],
+                                                             val     doneSignal: T)
+  extends HdxPartitionReader[T](doneSignal, "json")
 {
-  override def outputFormat = "json"
-
   override def handleStdout(stdout: InputStream): Unit = {
     var rowId = 0
 
@@ -45,13 +43,13 @@ final class RowPartitionReader[T <: AnyRef](         val           info: HdxConn
         while (true) {
           val line = reader.readLine()
           if (line == null) {
-            stdoutQueue.put(doneSignal)
+            enqueue(doneSignal)
+            stdout.close()
             break()
           } else {
             rowId += 1
-            expectedLines.incrementAndGet()
             val obj = JSON.objectMapper.readValue[ObjectNode](line)
-            stdoutQueue.put(parse.row(rowId, scan.schema, obj))
+            enqueue(parse.row(rowId, scan.schema, obj))
           }
         }
       }

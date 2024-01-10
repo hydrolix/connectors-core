@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Hydrolix Inc.
+ * Copyright (c) 2023-2024 Hydrolix Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,8 +65,7 @@ class ConnectorSmokeTest {
 
     println("Timestamp values from first partition:")
     val reader = new RowPartitionReader[Row](info, storage, "timestamp", partitions.head, CoreRowAdapter, Row.empty)
-    while (reader.next()) {
-      val row = reader.get()
+    reader.stream.forEach { row =>
       println(row)
       val l = row.values(0)
       println(l)
