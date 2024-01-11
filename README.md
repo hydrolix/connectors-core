@@ -71,8 +71,6 @@ The following are released under the [Apache 2.0 license](./licenses/Apache_Lice
 * All files in [src/main/scala](./src/main/scala)
 * All files in [src/main/java](./src/main/java)
 * All files in [src/test/scala](./src/test/scala)
-* All files in [scripts](./scripts)
-* All files in [doc](./doc)
 * [src/main/resources/logback.xml](src/main/resources/logback.xml)
 * [build.sbt](./build.sbt)
 * [project/plugins.sbt](./project/plugins.sbt)
@@ -80,9 +78,9 @@ The following are released under the [Apache 2.0 license](./licenses/Apache_Lice
 
 ### Proprietary
 * All files made available in this repository that are not identified above as being licensed under the Apache 2.0
-  license, including without limitation [`turbine_cmd`](./src/main/resources/linux-x86-64/turbine_cmd), may be used only by users that have entered into a 
-  separate written agreement with us that contains licenses to use our software and such use is subject to the terms of
-  that separate written agreement.
+  license, including without limitation [`turbine_cmd`](./src/main/resources/linux-x86-64/turbine_cmd), may be used only 
+  by users that have entered into a separate written agreement with us that contains licenses to use our software and 
+  such use is subject to the terms of that separate written agreement.
 
 ### Other
 Dependencies are used under a variety of open source licenses; see [NOTICE.md](./NOTICE.md)
@@ -157,7 +155,10 @@ and cloud storage. We should add integrations to retrieve credentials from vario
 ## Changelog
 
 ### 1.3.0
-Adding JSON serde to core literals
+* JSON serde functionality for core literals
+* Some basic data generation tools
+* Major refactoring of HdxPartitionReader to simplify implementation and present a java `Stream` instead of a strange 
+  kind of iterator 
 
 ### 1.2.0
 Refactoring, adding support for transforms (not necessarily useful for connectors per se)
