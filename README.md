@@ -109,8 +109,8 @@ The library can _work_ on other OS's (including macOS) via Docker, but we don't 
    ```
 3. Run `sbt -J-Xmx4g +publishLocal` to compile and build the connectors-core jar files (for Scala 2.12 and 2.13)
 4. If the build succeeds, the jars can be found at:
-   * [./target/scala-2.12/hydrolix-connectors-core_2.12-1.3.0-SNAPSHOT.jar](./target/scala-2.12/hydrolix-connectors-core_2.12-1.3.0-SNAPSHOT.jar).
-   * [./target/scala-2.13/hydrolix-connectors-core_2.13-1.3.0-SNAPSHOT.jar](./target/scala-2.13/hydrolix-connectors-core_2.13-1.3.0-SNAPSHOT.jar).
+   * [./target/scala-2.12/hydrolix-connectors-core_2.12-1.3.1-SNAPSHOT.jar](./target/scala-2.12/hydrolix-connectors-core_2.12-1.3.1-SNAPSHOT.jar).
+   * [./target/scala-2.13/hydrolix-connectors-core_2.13-1.3.1-SNAPSHOT.jar](./target/scala-2.13/hydrolix-connectors-core_2.13-1.3.1-SNAPSHOT.jar).
 
 ## Configuration
 
@@ -153,6 +153,9 @@ and cloud storage. We should add integrations to retrieve credentials from vario
 * GCP Secret Manager
 
 ## Changelog
+
+### 1.3.1
+* Race condition bug fix in HdxPartitionReader 
 
 ### 1.3.0
 * JSON serde functionality for core literals

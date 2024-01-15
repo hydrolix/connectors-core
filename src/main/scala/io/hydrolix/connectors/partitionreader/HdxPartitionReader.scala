@@ -19,7 +19,7 @@ package io.hydrolix.connectors.partitionreader
 import java.io._
 import java.nio.file.Files
 import java.util.Base64
-import java.util.concurrent.{ArrayBlockingQueue, CountDownLatch}
+import java.util.concurrent.{ArrayBlockingQueue, CountDownLatch, TimeUnit}
 import java.util.zip.GZIPInputStream
 import scala.collection.mutable
 import scala.sys.process.{Process, ProcessIO}
@@ -262,9 +262,6 @@ abstract class HdxPartitionReader[T >: Null <: AnyRef](doneSignal: T, outputForm
    */
   def enqueue(value: T): Unit = {
     started.countDown()
-    if (value eq doneSignal) {
-      finished.countDown()
-    }
     stdoutQueue.put(value) // TODO it's possible this could block forever if the queue is full and the consumer is stalled
   }
 
@@ -285,25 +282,38 @@ abstract class HdxPartitionReader[T >: Null <: AnyRef](doneSignal: T, outputForm
   private val hdxReaderProcess = launch(cmdAndArgs, handleStdout, stderrLines)
 
   val stream = {
-    // TODO this should have a timeout just in case the implementor never enqueues anything
+    // TODO this should probably have a timeout just in case the implementor never enqueues anything
     started.await()
 
-    stdoutQueue.stream().takeWhile(_ ne doneSignal).onClose { () =>
-      finished.await()
+    stdoutQueue.stream().peek { value =>
+      // Peek so we can observe the poison pill...
 
-      // There are definitely no more records, stdout is closed, now we can wait for the sweet release of death
-      val exit = hdxReaderProcess.exitValue()
-      val err = stderrLines.mkString("\n  ", "\n  ", "\n")
+      if (value eq doneSignal) {
+        // No more records will be produced, stdout is closed, now we can wait for the sweet release of death
+        log.info("Waiting for child process to exit...")
+        val exit = hdxReaderProcess.exitValue()
+        log.info(s"Child process exited with status $exit")
+        finished.countDown()
 
-      if (exit != 0) {
-        sys.error(s"turbine_cmd process exited with code $exit; stderr was $err")
-      } else {
-        if (err.trim.nonEmpty) log.warn(s"turbine_cmd process exited with code $exit but stderr was: $err")
+        val err = stderrLines.mkString("\n  ", "\n  ", "\n")
+
+        if (exit != 0) {
+          sys.error(s"turbine_cmd process exited with code $exit; stderr was $err")
+        } else {
+          if (err.trim.nonEmpty) log.warn(s"turbine_cmd process exited with code $exit but stderr was: $err")
+        }
       }
+    }.filter { value =>
+      // ...but don't pass it along to consumers
+      value ne doneSignal
     }
   }
 
   def close(): Unit = {
+    if (!finished.await(30, TimeUnit.SECONDS)) {
+      log.warn("Timed out waiting for queue to be consumed")
+    }
+
     try {
       if (hdxReaderProcess.isAlive()) {
         log.info("Child process is still alive; killing")
