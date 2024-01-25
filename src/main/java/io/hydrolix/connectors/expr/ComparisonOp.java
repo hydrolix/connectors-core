@@ -16,6 +16,8 @@
 
 package io.hydrolix.connectors.expr;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.util.Arrays;
 import java.util.Map;
 
@@ -41,7 +43,21 @@ public enum ComparisonOp {
         return symbol;
     }
 
+    public ComparisonOp negate() {
+        return negated.get(this);
+    }
+
     public static final Map<String, ComparisonOp> bySymbol =
-            Arrays.stream(ComparisonOp.values())
-                  .collect(toUnmodifiableMap(ComparisonOp::getSymbol, identity()));
+        Arrays.stream(ComparisonOp.values())
+              .collect(toUnmodifiableMap(ComparisonOp::getSymbol, identity()));
+
+    private static final ImmutableMap<ComparisonOp, ComparisonOp> negated =
+        ImmutableMap.of(
+            EQ, NE,
+            NE, EQ,
+            GT, LE,
+            GE, LT,
+            LT, GE,
+            LE, GT
+        );
 }

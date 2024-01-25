@@ -28,7 +28,6 @@ import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan, JSON}
 
 final class RowPartitionReader[T >: Null <: AnyRef](         val           info: HdxConnectionInfo,
                                                              val        storage: HdxStorageSettings,
-                                                             val primaryKeyName: String,
                                                              val           scan: HdxPartitionScanPlan,
                                                              val          parse: RowAdapter[T, _, _],
                                                              val     doneSignal: T)

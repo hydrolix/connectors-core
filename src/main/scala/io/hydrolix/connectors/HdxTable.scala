@@ -34,6 +34,7 @@ case class HdxTable(info: HdxConnectionInfo,
 
 case class HdxPartitionScanPlan(db: String,
                              table: String,
+                   primaryKeyField: String,
                          storageId: UUID,
                      partitionPath: String,
                             schema: StructType,

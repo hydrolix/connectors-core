@@ -40,6 +40,25 @@ class ConnectorSmokeTest {
   @Ignore("Requires environment variables not always available")
   @Test
   def doStuff(): Unit = {
+    val reader = partitionReader()
+    println("Timestamp values from first partition:")
+    reader.stream.forEach { row =>
+      println(row)
+      val l = row.values(0)
+      println(l)
+    }
+  }
+
+  @Ignore("Requires environment variables not always available")
+  @Test
+  def doNothing(): Unit = {
+    val reader = partitionReader()
+    val xx = reader.stream
+    // TODO maybe there's some way to detect this...
+    println(s"hopefully no child process was launched here: $xx")
+  }
+
+  private def partitionReader() = {
     val info = connectionInfo()
 
     val catalog = new HdxTableCatalog()
@@ -52,10 +71,10 @@ class ConnectorSmokeTest {
 
     val getTimestamp = expr.GetField(table.primaryKeyField, TimestampType(3))
 
-    val pred = And(List(
+    val pred = And(
       GreaterEqual(getTimestamp, TimestampLiteral(fiveMinutesAgo)),
       LessEqual(getTimestamp, TimestampLiteral(now))
-    ))
+    )
 
     val partitions = HdxPushdown.planPartitions(info, HdxJdbcSession(info), table, StructType(List(StructField("timestamp", TimestampType(3)))), List(pred))
 
@@ -63,12 +82,6 @@ class ConnectorSmokeTest {
 
     val storage = table.storages.getOrElse(partitions.head.storageId, sys.error(s"No storage #${partitions.head.storageId}"))
 
-    println("Timestamp values from first partition:")
-    val reader = new RowPartitionReader[Row](info, storage, "timestamp", partitions.head, CoreRowAdapter, Row.empty)
-    reader.stream.forEach { row =>
-      println(row)
-      val l = row.values(0)
-      println(l)
-    }
+    new RowPartitionReader[Row](info, storage, partitions.head, CoreRowAdapter, Row.empty)
   }
 }

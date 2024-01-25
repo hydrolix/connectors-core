@@ -39,6 +39,8 @@ object ScalarType {
 }
 
 object BooleanType extends ScalarType("boolean") {
+  override val toString = "BooleanType"
+
   override type T = Boolean
 
   override def toJson(value: Boolean): JsonNode = BooleanNode.valueOf(value)
@@ -50,8 +52,10 @@ object BooleanType extends ScalarType("boolean") {
     }
   }
 }
+
 object StringType extends ScalarType("string") {
   override type T = String
+
   override def toJson(value: String): JsonNode = TextNode.valueOf(value)
   override def fromJson(node: JsonNode): Either[String, String] = {
     node match {
@@ -59,9 +63,14 @@ object StringType extends ScalarType("string") {
       case _ => fail(node) // TODO maybe toString is good sometimes
     }
   }
+  override val toString = "StringType"
 }
+
 object Int8Type extends ScalarType("int8") {
+  override val toString = "Int8Type"
+
   override type T = Byte
+
   override def toJson(value: Byte): JsonNode = ShortNode.valueOf(value)
   override def fromJson(node: JsonNode): Either[String, Byte] = {
     node match {
@@ -71,8 +80,12 @@ object Int8Type extends ScalarType("int8") {
     }
   }
 }
+
 object Int16Type extends ScalarType("int16") {
+  override val toString = "Int16Type"
+
   override type T = Short
+
   override def toJson(value: Short): JsonNode = ShortNode.valueOf(value)
   override def fromJson(node: JsonNode): Either[String, Short] = {
     node match {
@@ -83,7 +96,10 @@ object Int16Type extends ScalarType("int16") {
   }
 }
 object Int32Type extends ScalarType("int32") {
+  override val toString = "Int32Type"
+
   override type T = Int
+
   override def toJson(value: Int): JsonNode = IntNode.valueOf(value)
   override def fromJson(node: JsonNode): Either[String, Int] = {
     node match {
@@ -93,8 +109,12 @@ object Int32Type extends ScalarType("int32") {
     }
   }
 }
+
 object Int64Type extends ScalarType("int64") {
+  override val toString = "Int64Type"
+
   override type T = Long
+
   override def toJson(value: Long): JsonNode = LongNode.valueOf(value)
 
   private val min = jm.BigInteger.valueOf(Long.MinValue)
@@ -107,7 +127,10 @@ object Int64Type extends ScalarType("int64") {
     }
   }
 }
+
 object UInt8Type extends ScalarType("uint8") {
+  override val toString = "UInt8Type"
+
   override type T = Short
 
   override def toJson(value: Short): JsonNode = ShortNode.valueOf(value)
@@ -121,7 +144,10 @@ object UInt8Type extends ScalarType("uint8") {
     }
   }
 }
+
 object UInt16Type extends ScalarType("uint16") {
+  override val toString = "UInt16Type"
+
   override type T = Int
 
   override def toJson(value: Int): JsonNode = IntNode.valueOf(value)
@@ -135,7 +161,10 @@ object UInt16Type extends ScalarType("uint16") {
     }
   }
 }
+
 object UInt32Type extends ScalarType("uint32") {
+  override val toString = "UInt32Type"
+
   override type T = Long
 
   override def toJson(value: Long): JsonNode = LongNode.valueOf(value)
@@ -168,10 +197,14 @@ object UInt64Type extends ScalarType("uint64") {
       case _ => Left(s"Can't convert $node to uint64") // TODO maybe convert other kinds of node?
     }
   }
+  override val toString = "UInt64Type"
 }
 
 object Float32Type extends ScalarType("float32") {
+  override val toString = "Float32Type"
+
   override type T = Float
+
   override def toJson(value: Float): JsonNode = FloatNode.valueOf(value)
   override def fromJson(node: JsonNode): Either[String, Float] = {
     node match {
@@ -182,7 +215,10 @@ object Float32Type extends ScalarType("float32") {
 }
 
 object Float64Type extends ScalarType("float64") {
+  override val toString = "Float64Type"
+
   override type T = Double
+
   override def toJson(value: Double): JsonNode = DoubleNode.valueOf(value)
   override def fromJson(node: JsonNode): Either[String, Double] = {
     node match {
@@ -236,6 +272,12 @@ case class TimestampType private (precision: Int) extends ScalarType(s"timestamp
         }
       case _ => fail(node)
     }
+  }
+
+  // All timestamp values are equivalent
+  override val tryCast = {
+    case (TimestampType(_), i: Instant) => Some(i)
+    case _ => None
   }
 }
 

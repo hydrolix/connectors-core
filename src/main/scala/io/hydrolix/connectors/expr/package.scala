@@ -24,6 +24,7 @@ package object expr {
   trait Expr[+R <: Any] {
     def `type`: ValueType
     def children: List[Expr[_]]
+    def simplify(): Expr[R] = this
   }
 
   object Now extends Expr[Instant] {

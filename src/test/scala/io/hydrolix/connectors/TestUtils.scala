@@ -22,12 +22,16 @@ import io.hydrolix.connectors.api.{HdxColumnDatatype, HdxOutputColumn}
 import io.hydrolix.connectors.types.{StructField, StructType}
 
 object TestUtils {
+  def getRequiredEnv(name: String): String = {
+    Option(System.getenv(name)).getOrElse(sys.error(s"$name is required"))
+  }
+
   def connectionInfo() = {
-    val jdbcUrl = System.getenv("HDX_JDBC_URL")
-    val apiUrl = System.getenv("HDX_API_URL")
-    val user = System.getenv("HDX_USER")
-    val pass = System.getenv("HDX_PASSWORD")
-    val cloudCred1 = System.getenv("HDX_CLOUD_CRED_1")
+    val jdbcUrl = getRequiredEnv("HDX_JDBC_URL")
+    val apiUrl = getRequiredEnv("HDX_API_URL")
+    val user = getRequiredEnv("HDX_USER")
+    val pass = getRequiredEnv("HDX_PASSWORD")
+    val cloudCred1 = getRequiredEnv("HDX_CLOUD_CRED_1")
     val cloudCred2 = Option(System.getenv("HDX_CLOUD_CRED_2"))
     val dockerImageName = Option(System.getenv("HDX_DOCKER_IMAGE"))
 

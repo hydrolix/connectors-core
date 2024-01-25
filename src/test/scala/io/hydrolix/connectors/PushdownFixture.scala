@@ -1,19 +1,3 @@
-/*
- * Copyright (c) 2023 Hydrolix Inc.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package io.hydrolix.connectors
 
 import java.io.File
@@ -24,18 +8,16 @@ import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.UUID
 
 import org.h2.jdbcx.JdbcDataSource
-import org.junit.Assert.assertEquals
-import org.junit.Test
 
 import io.hydrolix.connectors.api.HdxColumnDatatype
 import io.hydrolix.connectors.expr._
 import io.hydrolix.connectors.types.{Int32Type, StringType, TimestampType, UInt32Type}
 
-//noinspection NameBooleanParameters
-class PushdownTest {
-  private def second(n: Int): Instant = Instant.EPOCH.plusSeconds(n)
+//noinspection NameBooleanParameters,TypeAnnotation
+object PushdownFixture {
+  def second(n: Int): Instant = Instant.EPOCH.plusSeconds(n)
 
-  private val unshardedPartitions = List(
+  val unshardedPartitions = List(
     HdxDbPartition("1", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1", "42bc986dc5eec4d3", true, None),
     HdxDbPartition("2", second(30), second(90), 1L, 1L, 1L, 1000, 1L, "2", "42bc986dc5eec4d3", true, None),
     HdxDbPartition("3", second(60), second(120), 1L, 1L, 1L, 1000, 1L, "3", "42bc986dc5eec4d3", true, None),
@@ -52,9 +34,9 @@ class PushdownTest {
   // TODO write some tests for sharded partitions too
   // TODO write some tests for sharded partitions too
   // TODO write some tests for sharded partitions too
-  private val wyhashAlex = WyHash("Alex")
-  private val wyhashBob = WyHash("Bob")
-  private val shardedPartitions = List(
+  val wyhashAlex = WyHash("Alex")
+  val wyhashBob = WyHash("Bob")
+  val shardedPartitions = List(
     HdxDbPartition("1a", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1a", wyhashAlex, true, None),
     HdxDbPartition("1b", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1b", wyhashBob, true, None),
     HdxDbPartition("2a", second(30), second(90), 1L, 1L, 1L, 1000, 1L, "2a", wyhashAlex, true, None),
@@ -77,11 +59,11 @@ class PushdownTest {
     HdxDbPartition("10b", second(270), second(330), 1L, 1L, 1L, 1000, 1L, "10b", wyhashBob, true, None),
   )
 
-  private val pkField = "timestamp"
-  private val nameField = "name"
-  private val ageField = "age"
+  val pkField = "timestamp"
+  val nameField = "name"
+  val ageField = "age"
 
-  private val cols = Map(
+  val cols = Map(
     pkField -> HdxColumnInfo(pkField, Types.valueTypeToHdx(TimestampType.Millis).copy(primary = true), false, TimestampType.Millis, 2),
     nameField -> HdxColumnInfo(nameField, HdxColumnDatatype(HdxValueType.String, false, false), true, StringType, 2),
     ageField -> HdxColumnInfo(ageField, HdxColumnDatatype(HdxValueType.UInt32, true, false), true, UInt32Type, 2),
@@ -95,64 +77,38 @@ class PushdownTest {
   val nameEqualsAlex = Equal(getName, StringLiteral("Alex"))
   val ageEquals50 = Equal(getAge, UInt32Literal(50))
 
-  @Test
-  def `check pushability of simple predicates`(): Unit = {
-    assertEquals("timestamp == literal is pushable", 2, HdxPushdown.pushable(pkField, None, timestampEquals1234, cols))
-    assertEquals("(name:string) == 'Alex' is pushable", 2, HdxPushdown.pushable(pkField, None, nameEqualsAlex, cols))
-    assertEquals("(age:uint32) == 50 is NOT pushable", 3, HdxPushdown.pushable(pkField, None, ageEquals50, cols))
+  def prune(partitions: List[HdxDbPartition], pred: Expr[Boolean]) = {
+    HdxPushdown.prunablePredicate(pkField, None, pred, true) match {
+      case Some(xpred) =>
+        partitions.filter { p =>
+          HdxPushdown.includePartition(
+            pkField,
+            None,
+            xpred,
+            p.minTimestamp,
+            p.maxTimestamp,
+            p.shardKey
+          )
+        }
+      case None => partitions
+    }
   }
 
-  @Test
-  def `ANDs over pushable predicates are still pushable`(): Unit = {
-    assertEquals("timestamp == literal AND nothing", 2, HdxPushdown.pushable(pkField, None, And(List(timestampEquals1234)), cols))
-    assertEquals("timestamp == literal AND string == literal is pushable", 2, HdxPushdown.pushable(pkField, None, And(List(timestampEquals1234, nameEqualsAlex)), cols))
-  }
-
-  @Test
-  def `ORs over uniform pushable predicates are still pushable`(): Unit = {
-    assertEquals("timestamp == literal1 OR timestamp == literal2", 2, HdxPushdown.pushable(pkField, None, Or(List(timestampEquals1234, timestampEquals2345)), cols))
-  }
-
-  @Test
-  def `get all partitions when no bounds`(): Unit = {
-    val parts = queryUnsharded(None, None)
-
-    assertEquals(unshardedPartitions.size, parts.size)
-  }
-
-  @Test
-  def `get all partitions when min & max bounds overlap everything`(): Unit = {
-    val parts = queryUnsharded(Some(second(30)), Some(second(330)))
-
-    assertEquals(unshardedPartitions.size, parts.size)
-  }
-
-  @Test
-  def `get all partitions when min & max bounds exactly match partitions`(): Unit = {
-    val parts = queryUnsharded(Some(second(0)), Some(second(360)))
-
-    assertEquals(unshardedPartitions.size, parts.size)
-  }
-
-  @Test
-  def `get all but two partitions when min & max bounds are just inside`(): Unit = {
-    val parts = queryUnsharded(
-      Some(unshardedPartitions.head.maxTimestamp.plusSeconds(1)),
-      Some(unshardedPartitions.last.minTimestamp.minusSeconds(1))
-    )
-
-    assertEquals(unshardedPartitions.size - 2, parts.size)
-  }
-
-  private def queryUnsharded(min: Option[Instant], max: Option[Instant]) = {
-    val (jdbc, ps) = setupCatalog()
-
-    insertPartitions(ps, unshardedPartitions)
+  def queryUnsharded(min: Option[Instant], max: Option[Instant]) = {
+    val jdbc: HdxJdbcSession = setupAndLoadCatalog(unshardedPartitions)
 
     jdbc.collectPartitions("testdb", "testtable", min, max)
   }
 
-  private def insertPartitions(ps: PreparedStatement, partitions: List[HdxDbPartition]): Unit = {
+  def setupAndLoadCatalog(partitions: List[HdxDbPartition]) = {
+    val (jdbc, ps) = setupCatalog()
+
+    insertPartitions(ps, partitions)
+
+    jdbc
+  }
+
+  def insertPartitions(ps: PreparedStatement, partitions: List[HdxDbPartition]): Unit = {
     for (p <- partitions) {
       ps.clearParameters()
       ps.setString(1, p.partition)
@@ -176,7 +132,7 @@ class PushdownTest {
     }
   }
 
-  private def setupCatalog(): (HdxJdbcSession, PreparedStatement) = {
+  def setupCatalog(): (HdxJdbcSession, PreparedStatement) = {
     val tmp = new File(System.getProperty("java.io.tmpdir"), s"testdb-${UUID.randomUUID().toString}")
     tmp.mkdirs()
     new RmRfThread(tmp).hook()
@@ -234,4 +190,5 @@ class PushdownTest {
 
     (jdbc, ps)
   }
+
 }

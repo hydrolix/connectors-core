@@ -23,6 +23,8 @@ trait ValueType extends Serializable {
   type T
 
   def decl: String
+
+  val tryCast: PartialFunction[(ValueType, Any), Option[T]]
 }
 
 /** For now this is just a marker to exclude AnyType */
@@ -31,6 +33,11 @@ trait ConcreteType extends ValueType {
   def fromJson(node: JsonNode): Either[String, T]
   def unsafeToJson(value: Any): JsonNode = toJson(value.asInstanceOf[T])
   def fail(node: JsonNode): Either[String, T] = Left(s"Can't convert $node to $decl")
+
+  val tryCast: PartialFunction[(ValueType, Any), Option[T]] = {
+    case (vt, value: Any) if vt == this => Some(value.asInstanceOf[T]) // Can always cast to same type
+    case _ => None                                                     // Nothing else can cast by default
+  }
 }
 
 object ValueType {
@@ -97,4 +104,9 @@ object ValueType {
 object AnyType extends ValueType {
   override type T = Any
   val decl = "<any>"
+
+  // Anything can cast to Any!
+  override val tryCast: PartialFunction[(ValueType, Any), Option[Any]] = {
+    case (_, value) => Some(value)
+  }
 }
