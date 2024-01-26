@@ -7,6 +7,7 @@ import java.sql.PreparedStatement
 import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.UUID
 
+import com.google.common.collect
 import org.h2.jdbcx.JdbcDataSource
 
 import io.hydrolix.connectors.api.HdxColumnDatatype
@@ -97,7 +98,13 @@ object PushdownFixture {
   def queryUnsharded(min: Option[Instant], max: Option[Instant]) = {
     val jdbc: HdxJdbcSession = setupAndLoadCatalog(unshardedPartitions)
 
-    jdbc.collectPartitions("testdb", "testtable", min, max)
+    jdbc.collectPartitions("testdb", "testtable", min, max, Set())
+  }
+
+  def querySharded(min: Option[Instant], max: Option[Instant], shardKeys: Set[String]) = {
+    val jdbc: HdxJdbcSession = setupAndLoadCatalog(shardedPartitions)
+
+    jdbc.collectPartitions("testdb", "testtable", min, max, shardKeys)
   }
 
   def setupAndLoadCatalog(partitions: List[HdxDbPartition]) = {
@@ -191,4 +198,7 @@ object PushdownFixture {
     (jdbc, ps)
   }
 
+  implicit class PartitionStuff(val part: HdxDbPartition) extends AnyVal {
+    def timeRange: collect.Range[Instant] = collect.Range.closed(part.minTimestamp, part.maxTimestamp)
+  }
 }

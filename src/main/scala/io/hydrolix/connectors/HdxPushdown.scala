@@ -425,8 +425,16 @@ object HdxPushdown {
       case LessThan(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst.minusMillis(1)
     }
 
+    val shardKeyHashes = table.shardKeyField.flatMap { field =>
+      pushedPreds.collectFirst {
+        case Equal(GetField(`field`, StringType), StringLiteral(s)) => List(s)
+        case In(GetField(`field`, StringType), ArrayLiteral(ss, ArrayType(StringType, _), _)) =>
+          ss.asInstanceOf[Seq[String]].toList
+      }
+    }.getOrElse(Nil).toSet.map(WyHash(_))
+
     // TODO consider other kinds of timestamp predicates like EQ, NE, IN(...)
-    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1), minTimestamp, maxTimestamp)
+    val parts = jdbc.collectPartitions(table.ident.head, table.ident(1), minTimestamp, maxTimestamp, shardKeyHashes)
 
     parts.zipWithIndex.flatMap { case (dbPartition, i) =>
       doPlan(table, info.partitionPrefix, cols, pushedPreds, hdxCols, dbPartition, i)

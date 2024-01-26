@@ -89,10 +89,11 @@ class HdxJdbcSession private (info: HdxConnectionInfo) {
   def collectPartitions(db: String,
                      table: String,
                   earliest: Option[Instant],
-                    latest: Option[Instant])
+                    latest: Option[Instant],
+            shardKeyHashes: Set[String])
                           : List[HdxDbPartition] =
   {
-    val (query, setParams) = catalogQuery(db, table, earliest, latest)
+    val (query, setParams) = catalogQuery(db, table, earliest, latest, shardKeyHashes)
 
     Using.Manager { use =>
       val conn = use(pool.getConnection)
@@ -137,40 +138,78 @@ class HdxJdbcSession private (info: HdxConnectionInfo) {
   def catalogQuery(db: String,
                 table: String,
              earliest: Option[Instant],
-               latest: Option[Instant])
+               latest: Option[Instant],
+       shardKeyHashes: Set[String])
                      : (String, PreparedStatement => Unit) =
   {
     val prefix = s"SELECT * FROM `$db`.`$table#.catalog` p"
     val parse = info.timestampLiteralConv.getOrElse("parseDateTimeBestEffort(?)")
 
-    (earliest, latest) match {
+    val (hashClause, hashFunc) = if (shardKeyHashes.isEmpty) {
+      (None, (_: PreparedStatement, _: Int) => ())
+    } else {
+      val qs = List.fill(shardKeyHashes.size)("?").mkString(",")
+
+      (
+        Some(s"p.shard_key IN ($qs)"),
+        { (stmt: PreparedStatement, startPos: Int) =>
+          for ((hash, i) <- shardKeyHashes.zipWithIndex) {
+            stmt.setString(startPos + i, hash)
+          }
+        }
+      )
+    }
+
+    val (timeClause, timeFunc, nextParamPos) = (earliest, latest) match {
       // Partition max is >= query min, and partition min is <= query max
       case (Some(qmin), Some(qmax)) =>
         if (qmax.isBefore(qmin)) sys.error(s"Query max timestamp $qmax was before min $qmin!")
 
         (
-          prefix + s" WHERE p.max_timestamp >= $parse AND p.min_timestamp <= $parse",
-          { stmt =>
+          Some(s"p.max_timestamp >= $parse AND p.min_timestamp <= $parse"),
+          { (stmt: PreparedStatement) =>
             stmt.setObject(1, LocalDateTime.ofInstant(qmin, ZoneId.of("UTC")))
             stmt.setObject(2, LocalDateTime.ofInstant(qmax, ZoneId.of("UTC")))
-          }
+          },
+          3
         )
       case (Some(qmin), None) =>
         // Partition max is >= query min
         (
-          prefix + s" WHERE p.max_timestamp >= $parse",
-          _.setObject(1, LocalDateTime.ofInstant(qmin, ZoneId.of("UTC")))
+          Some(s"p.max_timestamp >= $parse"),
+          { stmt: PreparedStatement =>
+            stmt.setObject(1, LocalDateTime.ofInstant(qmin, ZoneId.of("UTC")))
+          },
+          2
         )
       case (None, Some(qmax)) =>
         // Partition min is <= query max
         (
-          prefix + s" WHERE p.min_timestamp <= $parse",
-          _.setObject(1, LocalDateTime.ofInstant(qmax, ZoneId.of("UTC")))
+          Some(s"p.min_timestamp <= $parse"),
+          { stmt: PreparedStatement =>
+            stmt.setObject(1, LocalDateTime.ofInstant(qmax, ZoneId.of("UTC")))
+          },
+          2
         )
       case (None, None) =>
         // Unconstrained
-        (prefix, _ => ())
+        (
+          None,
+          { _: PreparedStatement => () },
+          1
+        )
     }
+
+    val clauses = timeClause.toList ++ hashClause.toList
+
+    val where = if (clauses.isEmpty) "" else clauses.mkString(" WHERE (", ") AND (", ")")
+
+    (
+      prefix + where,
+      { stmt: PreparedStatement =>
+        timeFunc(stmt)
+        hashFunc(stmt, nextParamPos)
+      }
+    )
   }
 }
-

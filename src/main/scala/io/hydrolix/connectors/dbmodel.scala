@@ -60,4 +60,3 @@ case class HdxDbPartition(
   active: Boolean,
   storageId: Option[UUID]
 )
-
