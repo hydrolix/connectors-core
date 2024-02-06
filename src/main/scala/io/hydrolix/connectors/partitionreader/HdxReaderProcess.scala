@@ -93,8 +93,9 @@ object HdxReaderProcess {
           spawn(f.getAbsolutePath) match {
             case (255, "", "No command specified") => // OK
             case (exit, out, err) =>
-              // TODO suppress this warning when in docker mode
-              log.warn(s"turbine_cmd may not work on this OS, it exited with code $exit, stdout: $out, stderr: $err")
+              if (info.turbineCmdDockerName.isEmpty) {
+                log.warn(s"turbine_cmd may not work on this OS, it exited with code $exit, stdout: $out, stderr: $err")
+              }
           }
 
           log.info(s"Extracted turbine_cmd binary to ${f.getAbsolutePath}")
@@ -104,7 +105,13 @@ object HdxReaderProcess {
       new File(hdxReaderTmp, HdxFs)
         .also(_.mkdir())
 
-    val turbineIniBefore = TurbineIni(storage, info.cloudCred1, info.cloudCred2, if (info.turbineCmdDockerName.isDefined) s"$DockerPathPrefix/$HdxFs" else hdxFsTmp.getAbsolutePath)
+    val turbineIniBefore = TurbineIni(
+      storage,
+      info.cloudCred1,
+      info.cloudCred2,
+      info.cloudStorageEndpointUrl,
+      if (info.turbineCmdDockerName.isDefined) s"$DockerPathPrefix/$HdxFs" else hdxFsTmp.getAbsolutePath
+    )
 
     val (turbineIniAfter, credsTempFile) = if (storage.cloud == "gcp" || storage.cloud == "gcs") {
       val gcsKeyFile = File.createTempFile("turbine_gcs_key", ".json", hdxReaderTmp)

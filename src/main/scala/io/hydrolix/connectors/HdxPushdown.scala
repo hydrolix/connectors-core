@@ -274,6 +274,8 @@ object HdxPushdown {
 
         hashes.contains(partitionShardKey)
 
+      // TODO AND(timestamp, shardKey)?
+
       case And(primaryCompare(_, op1, time1), primaryCompare(_, op2, time2)) =>
         val timeRange = (op1, op2) match {
           case (GE, LE) => Some(gc.Range.closed(time1, time2))

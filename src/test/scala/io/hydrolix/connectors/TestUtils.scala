@@ -34,8 +34,9 @@ object TestUtils {
     val cloudCred1 = getRequiredEnv("HDX_CLOUD_CRED_1")
     val cloudCred2 = Option(System.getenv("HDX_CLOUD_CRED_2"))
     val dockerImageName = Option(System.getenv("HDX_DOCKER_IMAGE"))
+    val storageEndpointUri = Option(System.getenv("HDX_STORAGE_ENDPOINT")).map(new URI(_))
 
-    HdxConnectionInfo(jdbcUrl, user, pass, new URI(apiUrl), None, cloudCred1, cloudCred2, dockerImageName)
+    HdxConnectionInfo(jdbcUrl, user, pass, new URI(apiUrl), None, cloudCred1, cloudCred2, dockerImageName, storageEndpointUri, None, None)
   }
 
   val scalarColumns = HdxValueType.values().toList.filter(vt => vt.isScalar && vt != HdxValueType.DateTime64).map { vt =>

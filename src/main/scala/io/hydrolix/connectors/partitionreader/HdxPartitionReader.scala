@@ -57,28 +57,53 @@ abstract class HdxPartitionReader[T >: Null <: AnyRef](doneSignal: T, outputForm
     HdxReaderProcess(info, storage, scan, outputFormat, handleStdout)
   }
 
-  @volatile private var datum: T = _
+  // Note: queue.iterator would be the wrong choice here, it doesn't see additional elements added after construction
+  def stream: jus.Stream[T] = {
+    log.info(s"${scan.partitionPath} Building stream...")
 
-  val stream: jus.Stream[T] = jus.Stream.iterate(
-    null, // Initial element: observed by hasNext as a start signal, but dropped from the resulting stream
-    { _: T =>
-      // Get the process if it's already running; launch it if not
-      val proc = process.get()
+    @volatile var datum: T = null
+    @volatile var i = 0
 
-      val got = stdoutQueue.take()
-      if (got eq doneSignal) {
-        proc.waitForExit()
-        false
-      } else {
-        datum = got
-        true
+    // TODO get rid of noisy logging
+    // TODO get rid of noisy logging
+    // TODO get rid of noisy logging
+    // TODO get rid of noisy logging
+    jus.Stream.iterate(
+      null, // Seed element always returned by the stream; we ignore and drop it afterward
+      { _: T =>
+        // Get the process if it's already running; launch it if not
+        val proc = process.get()
+
+        if (datum == null) {
+          // No value yet, need to load one
+          log.info(s"${scan.partitionPath} Getting next value from queue...")
+          val got = stdoutQueue.take()
+          if (got eq doneSignal) {
+            log.info(s"${scan.partitionPath} Got poison pill; exiting")
+            proc.waitForExit()
+            false
+          } else {
+            i += 1
+            log.info(s"${scan.partitionPath} Stashing value #$i: $got")
+            datum = got
+            true
+          }
+        } else {
+          log.info(s"${scan.partitionPath} Previously stashed value not consumed yet")
+          true
+        }
+      },
+      { (_: T) =>
+        if (datum == null) sys.error("No value stashed from hasNext!")
+
+        log.info(s"${scan.partitionPath} Returning stashed value #$i: $datum")
+
+        val ret = datum
+        datum = null // consume the value
+        ret
       }
-    },
-    { (_: T) =>
-      if (datum == null) sys.error("No value stashed from hasNext!")
-      datum
-    }
-  ).skip(1) // discard null seed value
+    ).skip(1) // discard null seed value
+  }
 
   def close(): Unit = {
     val proc = process.get()

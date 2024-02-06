@@ -16,6 +16,7 @@
 
 package io.hydrolix.connectors.partitionreader
 
+import java.net.URI
 import scala.util.Using
 
 import com.google.common.io.ByteStreams
@@ -30,7 +31,13 @@ object TurbineIni {
     new String(ByteStreams.toByteArray(stream), "UTF-8")
   }
 
-  def apply(storage: HdxStorageSettings, cloudCred1: String, cloudCred2: Option[String], hdxFsPath: String): String = {
+  def apply(storage: HdxStorageSettings,
+         cloudCred1: String,
+         cloudCred2: Option[String],
+ storageUrlOverride: Option[URI],
+          hdxFsPath: String)
+                   : String =
+  {
     val (creds, storageInfo) = storage.cloud match {
       case "gcp" | "gcs" =>
         (
@@ -48,6 +55,9 @@ object TurbineIni {
         )
 
       case "aws" =>
+        val endpointUrlOverride = storageUrlOverride
+          .map(url => s"fs.id.default.aws.s3.endpoint = ${url.toString}\n")
+          .getOrElse("\n")
         (
           s"""# AWS credentials
              |fs.aws.credentials.method = static
@@ -60,7 +70,7 @@ object TurbineIni {
              |fs.id.default.aws.region = ${storage.region}
              |fs.id.default.aws.s3.bucket_name = ${storage.bucketName}
              |fs.id.default.aws.s3.bucket_path = ${storage.bucketPath}
-             |""".stripMargin
+             |""".stripMargin + endpointUrlOverride
         )
 
       case "azure" =>

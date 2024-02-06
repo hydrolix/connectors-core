@@ -95,16 +95,25 @@ object PushdownFixture {
     }
   }
 
-  def queryUnsharded(min: Option[Instant], max: Option[Instant]) = {
-    val jdbc: HdxJdbcSession = setupAndLoadCatalog(unshardedPartitions)
+  private def queryPartitions(partitions: List[HdxDbPartition],
+                                     min: Option[Instant],
+                                     max: Option[Instant],
+                               shardKeys: Set[String]) =
+  {
+    val jdbc = setupAndLoadCatalog(partitions)
 
-    jdbc.collectPartitions("testdb", "testtable", min, max, Set())
+    val selected = jdbc.collectPartitions("testdb", "testtable", min, max, shardKeys)
+    val notSelected = partitions.filter(p => !selected.contains(p))
+
+    (partitions, selected, notSelected)
   }
 
-  def querySharded(min: Option[Instant], max: Option[Instant], shardKeys: Set[String]) = {
-    val jdbc: HdxJdbcSession = setupAndLoadCatalog(shardedPartitions)
+  def queryUnsharded(min: Option[Instant], max: Option[Instant], _ignored: Set[String] = Set()): (List[HdxDbPartition], List[HdxDbPartition], List[HdxDbPartition]) = {
+    queryPartitions(unshardedPartitions, min, max, Set())
+  }
 
-    jdbc.collectPartitions("testdb", "testtable", min, max, shardKeys)
+  def querySharded(min: Option[Instant], max: Option[Instant], shardKeys: Set[String]): (List[HdxDbPartition], List[HdxDbPartition], List[HdxDbPartition]) = {
+    queryPartitions(shardedPartitions, min, max, shardKeys)
   }
 
   def setupAndLoadCatalog(partitions: List[HdxDbPartition]) = {
@@ -182,18 +191,7 @@ object PushdownFixture {
         |  storage_id
         |) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin.replace("\n", ""))
 
-    val jdbc = HdxJdbcSession(HdxConnectionInfo(
-      ds.getUrl,
-      "",
-      "",
-      new URI("https://hdx.example.com/config/v1/"),
-      None,
-      "hello",
-      Some("goodbye"),
-      None,
-      Some(ds),
-      Some("parsedatetime(?, 'yyyy-MM-dd'' ''HH:mm:ss')")
-    ))
+    val jdbc = HdxJdbcSession(HdxConnectionInfo(ds.getUrl, "", "", new URI("https://hdx.example.com/config/v1/"), None, "hello", Some("goodbye"), None, dataSource = Some(ds), timestampLiteralConv = Some("parsedatetime(?, 'yyyy-MM-dd'' ''HH:mm:ss')")))
 
     (jdbc, ps)
   }
