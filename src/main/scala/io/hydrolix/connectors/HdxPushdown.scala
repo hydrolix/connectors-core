@@ -415,20 +415,25 @@ object HdxPushdown {
         case (name, _) => cols.fields.exists(_.name == name)
       }
 
+    val flatPreds = pushedPreds match {
+      case List(And(l, r)) => List(l, r)
+      case other => other
+    }
+
     // Get min & max timestamps for partition pruning -- the +1/-1 for GT/LT takes care of millisecond/second
     // granularity mismatches between query bounds and catalog bounds
-    val minTimestamp = pushedPreds.collectFirst {
+    val minTimestamp = flatPreds.collectFirst {
       case GreaterEqual(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst
       case GreaterThan(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst.plusMillis(1)
     }
 
-    val maxTimestamp = pushedPreds.collectFirst {
+    val maxTimestamp = flatPreds.collectFirst {
       case LessEqual(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst
       case LessThan(GetField(table.primaryKeyField, TimestampType(_)), TimestampLiteral(inst)) => inst.minusMillis(1)
     }
 
     val shardKeyHashes = table.shardKeyField.flatMap { field =>
-      pushedPreds.collectFirst {
+      flatPreds.collectFirst {
         case Equal(GetField(`field`, StringType), StringLiteral(s)) => List(s)
         case In(GetField(`field`, StringType), ArrayLiteral(ss, ArrayType(StringType, _), _)) =>
           ss.asInstanceOf[Seq[String]].toList
@@ -439,7 +444,7 @@ object HdxPushdown {
     val parts = jdbc.collectPartitions(table.ident.head, table.ident(1), minTimestamp, maxTimestamp, shardKeyHashes)
 
     parts.zipWithIndex.flatMap { case (dbPartition, i) =>
-      doPlan(table, info.partitionPrefix, cols, pushedPreds, hdxCols, dbPartition, i)
+      doPlan(table, info.partitionPrefix, cols, flatPreds, hdxCols, dbPartition, i)
     }
   }
 

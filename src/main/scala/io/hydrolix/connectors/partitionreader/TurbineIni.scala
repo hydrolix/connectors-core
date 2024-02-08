@@ -16,7 +16,6 @@
 
 package io.hydrolix.connectors.partitionreader
 
-import java.net.URI
 import scala.util.Using
 
 import com.google.common.io.ByteStreams
@@ -34,7 +33,6 @@ object TurbineIni {
   def apply(storage: HdxStorageSettings,
          cloudCred1: String,
          cloudCred2: Option[String],
- storageUrlOverride: Option[URI],
           hdxFsPath: String)
                    : String =
   {
@@ -55,8 +53,8 @@ object TurbineIni {
         )
 
       case "aws" =>
-        val endpointUrlOverride = storageUrlOverride
-          .map(url => s"fs.id.default.aws.s3.endpoint = ${url.toString}\n")
+        val endpointUrlOverride = storage.endpoint
+          .map(url => s"fs.id.default.aws.s3.endpoint = $url\n")
           .getOrElse("\n")
         (
           s"""# AWS credentials

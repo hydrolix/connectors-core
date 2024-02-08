@@ -40,4 +40,5 @@ case class HdxStorageSettings(isDefault: Boolean,
                              bucketName: String,
                              bucketPath: String,
                                  region: String,
-                                  cloud: String)
+                                  cloud: String,
+                               endpoint: Option[String])

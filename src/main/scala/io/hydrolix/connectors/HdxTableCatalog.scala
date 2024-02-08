@@ -66,10 +66,11 @@ final class HdxTableCatalog {
     val bp = HdxConnectionInfo.opt(opts, OPT_STORAGE_BUCKET_PATH)
     val r = HdxConnectionInfo.opt(opts, OPT_STORAGE_REGION)
     val c = HdxConnectionInfo.opt(opts, OPT_STORAGE_CLOUD)
+    val e = HdxConnectionInfo.opt(opts, OPT_STORAGE_ENDPOINT_URI)
 
     // TODO this is ugly
     if ((bn ++ bp ++ r ++ c).size == 4) {
-      this.storageSettings = Map(uuid0 -> HdxStorageSettings(true, bn.get, bp.get, r.get, c.get))
+      this.storageSettings = Map(uuid0 -> HdxStorageSettings(true, bn.get, bp.get, r.get, c.get, e))
     } else {
       val storages = api.storages()
       if (storages.isEmpty) {

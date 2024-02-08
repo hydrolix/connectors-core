@@ -78,7 +78,7 @@ class ConnectorSmokeTest {
 
     val partitions = HdxPushdown.planPartitions(info, HdxJdbcSession(info), table, StructType(List(StructField("timestamp", TimestampType(3)))), List(pred))
 
-    println(s"${partitions.size} partitions containing data with ${table.primaryKeyField} >= $fiveMinutesAgo")
+    println(s"${partitions.size} partitions containing data with ${table.primaryKeyField} >= $fiveMinutesAgo: ${partitions.mkString("\n")}")
 
     val storage = table.storages.getOrElse(partitions.head.storageId, sys.error(s"No storage #${partitions.head.storageId}"))
 

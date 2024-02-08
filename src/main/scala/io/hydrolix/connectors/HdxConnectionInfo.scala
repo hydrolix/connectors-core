@@ -36,8 +36,6 @@ import javax.sql.DataSource
  *                                  - for AWS, the secret key
  * @param turbineCmdDockerName    name of a Docker image/container to use to run `turbine_cmd`, in case the host OS
  *                                isn't a modern Linux distro
- * @param cloudStorageEndpointUrl If set, override the cloud storage endpoint URL with this value. Only useful for
- *                                AWS-style storage currently.
  * @param dataSource              [for testing] pass a DataSource here so we don't need to connect to a real ClickHouse
  * @param timestampLiteralConv    [for testing] a string like `parseDateTimeBestEffort(?)` or
  *                                `parsedatetime(?, 'yyyy-MM-dd'' ''HH:mm:ss')` to use when converting timestamp
@@ -51,9 +49,9 @@ case class HdxConnectionInfo(jdbcUrl: String,
                           cloudCred1: String,
                           cloudCred2: Option[String],
                 turbineCmdDockerName: Option[String],
-             cloudStorageEndpointUrl: Option[URI] = None,
      @transient           dataSource: Option[DataSource] = None,
-     @transient timestampLiteralConv: Option[String] = None)
+     @transient timestampLiteralConv: Option[String] = None,
+                           extraOpts: Map[String, String] = Map())
 {
   @transient lazy val asMap: Map[String, String] = {
     import HdxConnectionInfo._
@@ -64,11 +62,10 @@ case class HdxConnectionInfo(jdbcUrl: String,
       OPT_PASSWORD -> password,
       OPT_API_URL -> apiUrl.toString,
       OPT_CLOUD_CRED_1 -> cloudCred1,
-    ) ++ List(
+    ) ++ extraOpts ++ List(
       turbineCmdDockerName.map(OPT_TURBINE_CMD_DOCKER -> _),
       cloudCred2.map(OPT_CLOUD_CRED_2 -> _),
       partitionPrefix.map(OPT_PARTITION_PREFIX -> _),
-      cloudStorageEndpointUrl.map(OPT_STORAGE_ENDPOINT_URI -> _.toString)
     ).flatten
   }
 }
@@ -109,9 +106,8 @@ object HdxConnectionInfo {
     val cloudCred1 = req(options, OPT_CLOUD_CRED_1)
     val cloudCred2 = opt(options, OPT_CLOUD_CRED_2)
     val turbineCmdDocker = opt(options, OPT_TURBINE_CMD_DOCKER)
-    val endpointUri = opt(options, OPT_STORAGE_ENDPOINT_URI).map(new URI(_))
 
-    HdxConnectionInfo(url, user, pass, apiUrl, partitionPrefix, cloudCred1, cloudCred2, turbineCmdDocker, cloudStorageEndpointUrl = endpointUri)
+    val extra = options - OPT_JDBC_URL - OPT_USERNAME - OPT_PASSWORD - OPT_API_URL - OPT_PARTITION_PREFIX - OPT_CLOUD_CRED_1 - OPT_CLOUD_CRED_2 - OPT_TURBINE_CMD_DOCKER
+    HdxConnectionInfo(url, user, pass, apiUrl, partitionPrefix, cloudCred1, cloudCred2, turbineCmdDocker, extraOpts = extra)
   }
 }
-

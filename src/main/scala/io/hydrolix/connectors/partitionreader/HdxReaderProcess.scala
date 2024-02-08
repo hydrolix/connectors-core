@@ -109,7 +109,6 @@ object HdxReaderProcess {
       storage,
       info.cloudCred1,
       info.cloudCred2,
-      info.cloudStorageEndpointUrl,
       if (info.turbineCmdDockerName.isDefined) s"$DockerPathPrefix/$HdxFs" else hdxFsTmp.getAbsolutePath
     )
 

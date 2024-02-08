@@ -63,6 +63,9 @@ package object api {
                              pad: Option[String],
                           action: Option[String])
 
+  @JsonNaming(classOf[SnakeCaseStrategy])
+  @JsonIgnoreProperties(ignoreUnknown = true)
+  @JsonInclude(Include.NON_DEFAULT)
   case class HdxColumnSource(fromInputField: Option[String], // TODO it'd be nice to make this single fromInputFields
                             fromInputFields: Option[List[String]],
                              fromInputIndex: Option[Int],
