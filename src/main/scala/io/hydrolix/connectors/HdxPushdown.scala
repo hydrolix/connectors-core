@@ -466,15 +466,18 @@ object HdxPushdown {
     val pushResults = pushedPreds.map(includePartition(table.primaryKeyField, table.shardKeyField, _, min, max, sk))
     if (pushedPreds.nonEmpty && !pushResults.contains(true)) {
       // At least one pushed predicate said we could skip this partition
-      log.debug(s"Skipping partition ${i + 1}: $dbPartition")
+      log.debug("Skipping partition {}: {}", i+1, dbPartition)
       None
     } else {
-      log.debug(s"Scanning partition ${i + 1}: $dbPartition. Per-predicate results: ${pushedPreds.zip(pushResults).mkString("\n  ", "\n  ", "\n")}")
       // Either nothing was pushed, or at least one predicate didn't want to prune this partition; scan it
+
+      if (log.isDebugEnabled) {
+        log.debug("Scanning partition {}: {}. Per-predicate results: {}", i+1, dbPartition, pushedPreds.zip(pushResults).mkString("\n  ", "\n  ", "\n"))
+      }
 
       val (path, storageId) = dbPartition.storageId match {
         case Some(id) if dbPartition.partition.startsWith(id.toString + "/") =>
-          log.debug(s"storage_id = ${dbPartition.storageId}, partition = ${dbPartition.partition}")
+          log.debug("storage_id = {}, partition = {}", dbPartition.storageId, dbPartition.partition)
           // Remove storage ID prefix if present; it's not there physically
           ("db/hdx/" + dbPartition.partition.drop(id.toString.length + 1), id)
         case _ =>

@@ -17,17 +17,16 @@
 package io.hydrolix.connectors.partitionreader
 
 import java.io._
-import java.util.concurrent.{ArrayBlockingQueue, TimeUnit}
-import java.util.{stream => jus}
+import java.util.concurrent.{ArrayBlockingQueue, BlockingQueue, TimeUnit}
+import java.{util => ju}
 
-import com.google.common.base.{Supplier, Suppliers}
 import org.slf4j.LoggerFactory
 
 import io.hydrolix.connectors.api.HdxStorageSettings
 import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan}
 
 /**
- * Grab `stream` to consume data. It blocks the calling thread!
+ * Grab `iterator` to consume data. It blocks the calling thread!
  */
 abstract class HdxPartitionReader[T >: Null <: AnyRef](doneSignal: T, outputFormat: String) {
   private val log = LoggerFactory.getLogger(getClass)
@@ -53,64 +52,64 @@ abstract class HdxPartitionReader[T >: Null <: AnyRef](doneSignal: T, outputForm
   }
 
   // Wait until the caller starts consuming to actually start the process
-  private val process: Supplier[HdxReaderProcess] = Suppliers.memoize { () =>
-    HdxReaderProcess(info, storage, scan, outputFormat, handleStdout)
-  }
+  private lazy val process = HdxReaderProcess(info, storage, scan, outputFormat, handleStdout)
 
-  // Note: queue.iterator would be the wrong choice here, it doesn't see additional elements added after construction
-  def stream: jus.Stream[T] = {
-    log.info(s"${scan.partitionPath} Building stream...")
-
-    @volatile var datum: T = null
-    @volatile var i = 0
-
-    // TODO get rid of noisy logging
-    // TODO get rid of noisy logging
-    // TODO get rid of noisy logging
-    // TODO get rid of noisy logging
-    jus.Stream.iterate(
-      null, // Seed element always returned by the stream; we ignore and drop it afterward
-      { _: T =>
-        // Get the process if it's already running; launch it if not
-        val proc = process.get()
-
-        if (datum == null) {
-          // No value yet, need to load one
-          log.info(s"${scan.partitionPath} Getting next value from queue...")
-          val got = stdoutQueue.take()
-          if (got eq doneSignal) {
-            log.info(s"${scan.partitionPath} Got poison pill; exiting")
-            proc.waitForExit()
-            false
-          } else {
-            i += 1
-            log.info(s"${scan.partitionPath} Stashing value #$i: $got")
-            datum = got
-            true
-          }
-        } else {
-          log.info(s"${scan.partitionPath} Previously stashed value not consumed yet")
-          true
-        }
-      },
-      { (_: T) =>
-        if (datum == null) sys.error("No value stashed from hasNext!")
-
-        log.info(s"${scan.partitionPath} Returning stashed value #$i: $datum")
-
-        val ret = datum
-        datum = null // consume the value
-        ret
-      }
-    ).skip(1) // discard null seed value
-  }
+  val iterator: ju.Iterator[T] = new PartitionReaderIterator[T](process, stdoutQueue, doneSignal, scan.partitionPath)
 
   def close(): Unit = {
-    val proc = process.get()
-    if (!proc.finished.await(30, TimeUnit.SECONDS)) {
+    if (!process.finished.await(30, TimeUnit.SECONDS)) {
       log.warn("Timed out waiting for queue to be consumed")
     }
 
-    proc.close()
+    process.close()
+  }
+}
+
+// TODO get rid of the noisy logging
+// TODO get rid of the noisy logging
+// TODO get rid of the noisy logging
+// TODO get rid of the noisy logging
+//noinspection ConvertNullInitializerToUnderscore
+final class PartitionReaderIterator[T >: Null <: AnyRef](process: => HdxReaderProcess,
+                                                     stdoutQueue: BlockingQueue[T],
+                                                      doneSignal: T,
+                                                   partitionPath: String) extends ju.Iterator[T] {
+  private val logger = LoggerFactory.getLogger(getClass)
+
+  @volatile private var datum: T = null
+  @volatile private var i = 0
+
+  override def hasNext: Boolean = {
+    if (datum != null) {
+      logger.debug("{} Previously stashed value not consumed yet", partitionPath)
+      return true
+    }
+
+    // Launch the process
+    val proc = process
+
+    // No value yet, need to load one
+    logger.debug("{} Getting next value from queue...", partitionPath)
+    val got = stdoutQueue.take() // TODO add a timeout here!
+    if (got eq doneSignal) {
+      logger.info("{} Got poison pill; exiting", partitionPath)
+      proc.waitForExit()
+      false
+    } else {
+      i += 1
+      logger.debug("{} Stashing value #{}: {}", partitionPath, i, got)
+      datum = got
+      true
+    }
+  }
+
+  override def next(): T = {
+    if (datum == null) sys.error("No value stashed from hasNext!")
+
+    logger.debug("{} Returning stashed value #{}: {}", partitionPath, i, datum)
+
+    val ret = datum
+    datum = null // consume the value
+    ret
   }
 }

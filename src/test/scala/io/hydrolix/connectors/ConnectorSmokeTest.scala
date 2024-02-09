@@ -20,6 +20,7 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 import org.junit.{Ignore, Test}
+import org.slf4j.LoggerFactory
 
 import io.hydrolix.connectors.TestUtils.connectionInfo
 import io.hydrolix.connectors.data.{CoreRowAdapter, Row}
@@ -27,7 +28,10 @@ import io.hydrolix.connectors.expr._
 import io.hydrolix.connectors.partitionreader.RowPartitionReader
 import io.hydrolix.connectors.types.{StructField, StructType, TimestampType}
 
+//noinspection ZeroIndexToHead
 class ConnectorSmokeTest {
+  private val logger = LoggerFactory.getLogger(getClass)
+
   @Ignore("Requires environment variables not always available")
   @Test
   def listTransforms(): Unit = {
@@ -41,11 +45,9 @@ class ConnectorSmokeTest {
   @Test
   def doStuff(): Unit = {
     val reader = partitionReader()
-    println("Timestamp values from first partition:")
-    reader.stream.forEach { row =>
-      println(row)
-      val l = row.values(0)
-      println(l)
+    logger.info("Timestamp values from first partition:")
+    reader.iterator.forEachRemaining { row =>
+      logger.info(row.values(0).toString)
     }
   }
 
@@ -53,9 +55,9 @@ class ConnectorSmokeTest {
   @Test
   def doNothing(): Unit = {
     val reader = partitionReader()
-    val xx = reader.stream
+    val xx = reader.iterator
     // TODO maybe there's some way to detect this...
-    println(s"hopefully no child process was launched here: $xx")
+    logger.info(s"hopefully no child process was launched here: $xx")
   }
 
   private def partitionReader() = {
@@ -78,7 +80,7 @@ class ConnectorSmokeTest {
 
     val partitions = HdxPushdown.planPartitions(info, HdxJdbcSession(info), table, StructType(List(StructField("timestamp", TimestampType(3)))), List(pred))
 
-    println(s"${partitions.size} partitions containing data with ${table.primaryKeyField} >= $fiveMinutesAgo: ${partitions.mkString("\n")}")
+    logger.info(s"${partitions.size} partitions containing data with ${table.primaryKeyField} >= $fiveMinutesAgo: ${partitions.mkString("\n  ", "\n  ", "")}")
 
     val storage = table.storages.getOrElse(partitions.head.storageId, sys.error(s"No storage #${partitions.head.storageId}"))
 
