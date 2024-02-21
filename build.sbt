@@ -48,7 +48,8 @@ libraryDependencies := Seq(
   "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % "2.15.3",
   "com.github.ben-manes.caffeine" % "caffeine" % "3.1.5",
   "org.apache.httpcomponents.client5" % "httpclient5" % "5.2.1",
-  "ch.qos.logback" % "logback-classic" % "1.4.7",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+  "ch.qos.logback" % "logback-classic" % "1.4.12",
   "net.java.dev.jna" % "jna" % "5.13.0", // for Wyhash
 
   "com.github.sbt" % "junit-interface" % "0.13.3" % Test,

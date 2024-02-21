@@ -20,7 +20,7 @@ import java.time.Instant
 import scala.math.Ordered.orderingToOrdered
 
 import com.google.common.{collect => gc}
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 import io.hydrolix.connectors.FieldCompareLiteral.{AnyField, SpecificField}
 import io.hydrolix.connectors.expr._
@@ -28,7 +28,7 @@ import io.hydrolix.connectors.types._
 
 //noinspection ScalaWeakerAccess,ScalaUnusedSymbol
 object HdxPushdown {
-  private val log = LoggerFactory.getLogger(getClass)
+  private val log = Logger(getClass)
   import ComparisonOp._
 
   /**
@@ -471,9 +471,7 @@ object HdxPushdown {
     } else {
       // Either nothing was pushed, or at least one predicate didn't want to prune this partition; scan it
 
-      if (log.isDebugEnabled) {
-        log.debug("Scanning partition {}: {}. Per-predicate results: {}", i+1, dbPartition, pushedPreds.zip(pushResults).mkString("\n  ", "\n  ", "\n"))
-      }
+      log.debug("Scanning partition {}: {}. Per-predicate results: {}", i+1, dbPartition, pushedPreds.zip(pushResults).mkString("\n  ", "\n  ", "\n"))
 
       val (path, storageId) = dbPartition.storageId match {
         case Some(id) if dbPartition.partition.startsWith(id.toString + "/") =>

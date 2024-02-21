@@ -2,7 +2,7 @@ package io.hydrolix.connectors
 
 import scala.collection.mutable
 
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 import io.hydrolix.connectors.expr._
 import io.hydrolix.connectors.types.{ConcreteType, ValueType}
@@ -16,7 +16,7 @@ sealed trait FieldCompareLiteral[T] {
 }
 
 object FieldCompareLiteral {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = Logger(getClass)
 
   private val cache = mutable.HashMap[(WhichField, ConcreteType), RealFCL[_]]()
 

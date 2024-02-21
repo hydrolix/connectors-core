@@ -20,7 +20,7 @@ import java.io._
 import java.util.concurrent.{ArrayBlockingQueue, BlockingQueue, TimeUnit}
 import java.{util => ju}
 
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 import io.hydrolix.connectors.api.HdxStorageSettings
 import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan}
@@ -29,7 +29,7 @@ import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan}
  * Grab `iterator` to consume data. It blocks the calling thread!
  */
 abstract class HdxPartitionReader[T >: Null <: AnyRef](doneSignal: T, outputFormat: String) {
-  private val log = LoggerFactory.getLogger(getClass)
+  private val log = Logger(getClass)
 
   val info: HdxConnectionInfo
   val storage: HdxStorageSettings
@@ -74,7 +74,7 @@ final class PartitionReaderIterator[T >: Null <: AnyRef](process: => HdxReaderPr
                                                      stdoutQueue: BlockingQueue[T],
                                                       doneSignal: T,
                                                    partitionPath: String) extends ju.Iterator[T] {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = Logger(getClass)
 
   @volatile private var datum: T = null
   @volatile private var i = 0

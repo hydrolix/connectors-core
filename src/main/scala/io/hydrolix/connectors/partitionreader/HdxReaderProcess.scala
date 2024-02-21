@@ -1,18 +1,18 @@
 package io.hydrolix.connectors.partitionreader
 
-import java.io.{BufferedReader, ByteArrayInputStream, File, FileOutputStream, InputStream, InputStreamReader}
+import java.io._
 import java.nio.file.Files
 import java.util.Base64
 import java.util.concurrent.CountDownLatch
 import java.util.zip.GZIPInputStream
 import scala.collection.mutable
 import scala.sys.process.{Process, ProcessIO}
-import scala.util.{Try, Using}
 import scala.util.Using.resource
 import scala.util.control.Breaks.{break, breakable}
+import scala.util.{Try, Using}
 
 import com.google.common.io.ByteStreams
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 import io.hydrolix.connectors.api.{HdxOutputColumn, HdxStorageSettings}
 import io.hydrolix.connectors.{Etc, HdxConnectionInfo, HdxPartitionScanPlan, HdxPushdown, JSON, RmRfThread, spawn}
@@ -23,7 +23,7 @@ object HdxReaderProcess {
   private val HdxFs = "hdxfs"
   private val StderrFilterR = """^read hdx_partition=(.*?) rows=(.*?) values=(.*?) in (.*?)$""".r
 
-  private val log = LoggerFactory.getLogger(getClass)
+  private val log = Logger(getClass)
 
   /**
    * Read lines from `stream`, calling `onLine` when a line is read, then `onDone` when EOF is reached.

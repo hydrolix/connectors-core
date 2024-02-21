@@ -19,8 +19,8 @@ package io.hydrolix.connectors
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+import com.typesafe.scalalogging.Logger
 import org.junit.{Ignore, Test}
-import org.slf4j.LoggerFactory
 
 import io.hydrolix.connectors.TestUtils.connectionInfo
 import io.hydrolix.connectors.data.{CoreRowAdapter, Row}
@@ -30,7 +30,7 @@ import io.hydrolix.connectors.types.{StructField, StructType, TimestampType}
 
 //noinspection ZeroIndexToHead
 class ConnectorSmokeTest {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = Logger(getClass)
 
   @Ignore("Requires environment variables not always available")
   @Test

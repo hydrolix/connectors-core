@@ -20,17 +20,17 @@ import java.time.Duration
 import java.util.UUID
 
 import com.github.benmanes.caffeine.cache.{CacheLoader, Caffeine, Expiry, LoadingCache}
+import com.typesafe.scalalogging.Logger
 import org.apache.hc.client5.http.HttpResponseException
 import org.apache.hc.client5.http.classic.methods.{HttpGet, HttpPost, HttpUriRequest}
 import org.apache.hc.client5.http.impl.classic.{BasicHttpClientResponseHandler, HttpClients}
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
-import org.slf4j.LoggerFactory
 
 import io.hydrolix.connectors.api._
 
 final class HdxApiSession(info: HdxConnectionInfo) {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = Logger(getClass)
 
   def tables(db: String): List[HdxApiTable] = {
     val project = database(db).getOrElse(sys.error(s"No such database $db"))

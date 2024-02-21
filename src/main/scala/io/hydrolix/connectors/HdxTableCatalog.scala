@@ -19,14 +19,14 @@ package io.hydrolix.connectors
 import java.util.UUID
 import scala.collection.mutable
 
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 import io.hydrolix.connectors.HdxConnectionInfo._
 import io.hydrolix.connectors.api.HdxStorageSettings
 import io.hydrolix.connectors.types.{StructField, StructType}
 
 final class HdxTableCatalog {
-  private val log = LoggerFactory.getLogger(getClass)
+  private val log = Logger(getClass)
 
   var name: String = _
   private var info: HdxConnectionInfo = _

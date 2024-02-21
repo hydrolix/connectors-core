@@ -18,17 +18,17 @@ package io.hydrolix.connectors
 
 import java.util.UUID
 
+import com.typesafe.scalalogging.Logger
 import org.apache.hc.client5.http.classic.methods.HttpPost
 import org.apache.hc.client5.http.impl.classic.HttpClients
 import org.apache.hc.core5.http.ClassicHttpResponse
 import org.apache.hc.core5.http.io.entity.{EntityUtils, StringEntity}
-import org.slf4j.LoggerFactory
 
 import io.hydrolix.connectors.TestUtils._
 import io.hydrolix.connectors.api._
 
 object CreateTableAndTransform {
-  private val logger = LoggerFactory.getLogger(getClass)
+  private val logger = Logger(getClass)
   private val client = HttpClients.createDefault()
 
   def main(args: Array[String]): Unit = {

@@ -19,12 +19,12 @@ package io.hydrolix.connectors.partitionreader
 import scala.util.Using
 
 import com.google.common.io.ByteStreams
-import org.slf4j.LoggerFactory
+import com.typesafe.scalalogging.Logger
 
 import io.hydrolix.connectors.api.HdxStorageSettings
 
 object TurbineIni {
-  private val log = LoggerFactory.getLogger(getClass)
+  private val log = Logger(getClass)
 
   private val template = Using.resource(getClass.getResourceAsStream("/turbine_template.ini")) { stream =>
     new String(ByteStreams.toByteArray(stream), "UTF-8")
