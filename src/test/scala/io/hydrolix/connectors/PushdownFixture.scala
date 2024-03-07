@@ -19,16 +19,16 @@ object PushdownFixture {
   def second(n: Int): Instant = Instant.EPOCH.plusSeconds(n)
 
   val unshardedPartitions = List(
-    HdxDbPartition("1", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("2", second(30), second(90), 1L, 1L, 1L, 1000, 1L, "2", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("3", second(60), second(120), 1L, 1L, 1L, 1000, 1L, "3", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("4", second(90), second(150), 1L, 1L, 1L, 1000, 1L, "4", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("5", second(120), second(180), 1L, 1L, 1L, 1000, 1L, "5", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("6", second(150), second(210), 1L, 1L, 1L, 1000, 1L, "6", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("7", second(180), second(240), 1L, 1L, 1L, 1000, 1L, "7", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("8", second(210), second(270), 1L, 1L, 1L, 1000, 1L, "8", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("9", second(240), second(300), 1L, 1L, 1L, 1000, 1L, "9", "42bc986dc5eec4d3", true, None),
-    HdxDbPartition("10", second(270), second(330), 1L, 1L, 1L, 1000, 1L, "10", "42bc986dc5eec4d3", true, None),
+    HdxDbPartition("1", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1", "42bc986dc5eec4d3", None),
+    HdxDbPartition("2", second(30), second(90), 1L, 1L, 1L, 1000, 1L, "2", "42bc986dc5eec4d3", None),
+    HdxDbPartition("3", second(60), second(120), 1L, 1L, 1L, 1000, 1L, "3", "42bc986dc5eec4d3", None),
+    HdxDbPartition("4", second(90), second(150), 1L, 1L, 1L, 1000, 1L, "4", "42bc986dc5eec4d3", None),
+    HdxDbPartition("5", second(120), second(180), 1L, 1L, 1L, 1000, 1L, "5", "42bc986dc5eec4d3", None),
+    HdxDbPartition("6", second(150), second(210), 1L, 1L, 1L, 1000, 1L, "6", "42bc986dc5eec4d3", None),
+    HdxDbPartition("7", second(180), second(240), 1L, 1L, 1L, 1000, 1L, "7", "42bc986dc5eec4d3", None),
+    HdxDbPartition("8", second(210), second(270), 1L, 1L, 1L, 1000, 1L, "8", "42bc986dc5eec4d3", None),
+    HdxDbPartition("9", second(240), second(300), 1L, 1L, 1L, 1000, 1L, "9", "42bc986dc5eec4d3", None),
+    HdxDbPartition("10", second(270), second(330), 1L, 1L, 1L, 1000, 1L, "10", "42bc986dc5eec4d3", None),
   )
 
   // TODO write some tests for sharded partitions too
@@ -38,26 +38,26 @@ object PushdownFixture {
   val wyhashAlex = WyHash("Alex")
   val wyhashBob = WyHash("Bob")
   val shardedPartitions = List(
-    HdxDbPartition("1a", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1a", wyhashAlex, true, None),
-    HdxDbPartition("1b", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1b", wyhashBob, true, None),
-    HdxDbPartition("2a", second(30), second(90), 1L, 1L, 1L, 1000, 1L, "2a", wyhashAlex, true, None),
-    HdxDbPartition("2b", second(30), second(90), 1L, 1L, 1L, 1000, 1L, "2b", wyhashBob, true, None),
-    HdxDbPartition("3a", second(60), second(120), 1L, 1L, 1L, 1000, 1L, "3a", wyhashAlex, true, None),
-    HdxDbPartition("3b", second(60), second(120), 1L, 1L, 1L, 1000, 1L, "3b", wyhashBob, true, None),
-    HdxDbPartition("4a", second(90), second(150), 1L, 1L, 1L, 1000, 1L, "4a", wyhashAlex, true, None),
-    HdxDbPartition("4b", second(90), second(150), 1L, 1L, 1L, 1000, 1L, "4b", wyhashBob, true, None),
-    HdxDbPartition("5a", second(120), second(180), 1L, 1L, 1L, 1000, 1L, "5a", wyhashAlex, true, None),
-    HdxDbPartition("5b", second(120), second(180), 1L, 1L, 1L, 1000, 1L, "5b", wyhashBob, true, None),
-    HdxDbPartition("6a", second(150), second(210), 1L, 1L, 1L, 1000, 1L, "6a", wyhashAlex, true, None),
-    HdxDbPartition("6b", second(150), second(210), 1L, 1L, 1L, 1000, 1L, "6b", wyhashBob, true, None),
-    HdxDbPartition("7a", second(180), second(240), 1L, 1L, 1L, 1000, 1L, "7a", wyhashAlex, true, None),
-    HdxDbPartition("7b", second(180), second(240), 1L, 1L, 1L, 1000, 1L, "7b", wyhashBob, true, None),
-    HdxDbPartition("8a", second(210), second(270), 1L, 1L, 1L, 1000, 1L, "8a", wyhashAlex, true, None),
-    HdxDbPartition("8b", second(210), second(270), 1L, 1L, 1L, 1000, 1L, "8b", wyhashBob, true, None),
-    HdxDbPartition("9a", second(240), second(300), 1L, 1L, 1L, 1000, 1L, "9a", wyhashAlex, true, None),
-    HdxDbPartition("9b", second(240), second(300), 1L, 1L, 1L, 1000, 1L, "9b", wyhashBob, true, None),
-    HdxDbPartition("10a", second(270), second(330), 1L, 1L, 1L, 1000, 1L, "10a", wyhashAlex, true, None),
-    HdxDbPartition("10b", second(270), second(330), 1L, 1L, 1L, 1000, 1L, "10b", wyhashBob, true, None),
+    HdxDbPartition("1a", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1a", wyhashAlex, None),
+    HdxDbPartition("1b", second(0), second(60), 1L, 1L, 1L, 1000, 1L, "1b", wyhashBob, None),
+    HdxDbPartition("2a", second(30), second(90), 1L, 1L, 1L, 1000, 1L, "2a", wyhashAlex, None),
+    HdxDbPartition("2b", second(30), second(90), 1L, 1L, 1L, 1000, 1L, "2b", wyhashBob, None),
+    HdxDbPartition("3a", second(60), second(120), 1L, 1L, 1L, 1000, 1L, "3a", wyhashAlex, None),
+    HdxDbPartition("3b", second(60), second(120), 1L, 1L, 1L, 1000, 1L, "3b", wyhashBob, None),
+    HdxDbPartition("4a", second(90), second(150), 1L, 1L, 1L, 1000, 1L, "4a", wyhashAlex, None),
+    HdxDbPartition("4b", second(90), second(150), 1L, 1L, 1L, 1000, 1L, "4b", wyhashBob, None),
+    HdxDbPartition("5a", second(120), second(180), 1L, 1L, 1L, 1000, 1L, "5a", wyhashAlex, None),
+    HdxDbPartition("5b", second(120), second(180), 1L, 1L, 1L, 1000, 1L, "5b", wyhashBob, None),
+    HdxDbPartition("6a", second(150), second(210), 1L, 1L, 1L, 1000, 1L, "6a", wyhashAlex, None),
+    HdxDbPartition("6b", second(150), second(210), 1L, 1L, 1L, 1000, 1L, "6b", wyhashBob, None),
+    HdxDbPartition("7a", second(180), second(240), 1L, 1L, 1L, 1000, 1L, "7a", wyhashAlex, None),
+    HdxDbPartition("7b", second(180), second(240), 1L, 1L, 1L, 1000, 1L, "7b", wyhashBob, None),
+    HdxDbPartition("8a", second(210), second(270), 1L, 1L, 1L, 1000, 1L, "8a", wyhashAlex, None),
+    HdxDbPartition("8b", second(210), second(270), 1L, 1L, 1L, 1000, 1L, "8b", wyhashBob, None),
+    HdxDbPartition("9a", second(240), second(300), 1L, 1L, 1L, 1000, 1L, "9a", wyhashAlex, None),
+    HdxDbPartition("9b", second(240), second(300), 1L, 1L, 1L, 1000, 1L, "9b", wyhashBob, None),
+    HdxDbPartition("10a", second(270), second(330), 1L, 1L, 1L, 1000, 1L, "10a", wyhashAlex, None),
+    HdxDbPartition("10b", second(270), second(330), 1L, 1L, 1L, 1000, 1L, "10b", wyhashBob, None),
   )
 
   val pkField = "timestamp"
@@ -137,11 +137,10 @@ object PushdownFixture {
       ps.setLong(8, p.memSize)
       ps.setString(9, p.rootPath)
       ps.setString(10, p.shardKey)
-      ps.setByte(11, if (p.active) 1 else 0)
 
       p.storageId match {
-        case Some(id) => ps.setString(12, id.toString)
-        case None => ps.setNull(12, sql.Types.VARCHAR)
+        case Some(id) => ps.setString(11, id.toString)
+        case None => ps.setNull(11, sql.Types.VARCHAR)
       }
 
       ps.executeUpdate()
@@ -171,7 +170,6 @@ object PushdownFixture {
          |  mem_size BIGINT NOT NULL,
          |  root_path VARCHAR(128) NOT NULL,
          |  shard_key VARCHAR(24) NOT NULL,
-         |  active TINYINT NOT NULL,
          |  storage_id VARCHAR(36)
          |)""".stripMargin)
 
@@ -187,9 +185,8 @@ object PushdownFixture {
         |  mem_size,
         |  root_path,
         |  shard_key,
-        |  active,
         |  storage_id
-        |) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin.replace("\n", ""))
+        |) VALUES (?,?,?,?,?,?,?,?,?,?,?)""".stripMargin.replace("\n", ""))
 
     val jdbc = HdxJdbcSession(HdxConnectionInfo(ds.getUrl, "", "", new URI("https://hdx.example.com/config/v1/"), None, "hello", Some("goodbye"), None, dataSource = Some(ds), timestampLiteralConv = Some("parsedatetime(?, 'yyyy-MM-dd'' ''HH:mm:ss')")))
 

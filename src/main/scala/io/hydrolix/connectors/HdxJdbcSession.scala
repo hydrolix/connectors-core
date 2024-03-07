@@ -118,7 +118,6 @@ class HdxJdbcSession private (info: HdxConnectionInfo) {
           rs.getLong("mem_size"),
           rs.getString("root_path"),
           rs.getString("shard_key"),
-          rs.getByte("active") == 1,
           if (hasStorageId) {
             val sid = rs.getString("storage_id")
             if (rs.wasNull()) {

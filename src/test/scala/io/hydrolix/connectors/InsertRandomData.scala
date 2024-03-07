@@ -9,12 +9,11 @@ import org.apache.hc.core5.http.ClassicHttpResponse
 import org.apache.hc.core5.http.io.entity.{EntityUtils, StringEntity}
 
 import io.hydrolix.connectors.JSON.ObjectNodeStuff
-import io.hydrolix.connectors.TestUtils.connectionInfo
 import io.hydrolix.connectors.api.HdxOutputColumn
 
 object InsertRandomData {
   def main(args: Array[String]): Unit = {
-    val info = connectionInfo()
+    val info = HdxConnectionInfo.fromEnv()
     val dbName = args(0)
     val tableName = args(1)
     val transformName = args(2)

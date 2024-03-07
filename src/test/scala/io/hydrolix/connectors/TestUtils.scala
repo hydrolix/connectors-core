@@ -16,32 +16,10 @@
 
 package io.hydrolix.connectors
 
-import java.net.URI
-
 import io.hydrolix.connectors.api.{HdxColumnDatatype, HdxOutputColumn}
 import io.hydrolix.connectors.types.{StructField, StructType}
 
 object TestUtils {
-  def getRequiredEnv(name: String): String = {
-    Option(System.getenv(name)).getOrElse(sys.error(s"$name is required"))
-  }
-
-  def connectionInfo() = {
-    val jdbcUrl = getRequiredEnv("HDX_JDBC_URL")
-    val apiUrl = getRequiredEnv("HDX_API_URL")
-    val user = getRequiredEnv("HDX_USER")
-    val pass = getRequiredEnv("HDX_PASSWORD")
-    val cloudCred1 = getRequiredEnv("HDX_CLOUD_CRED_1")
-    val cloudCred2 = Option(System.getenv("HDX_CLOUD_CRED_2"))
-    val dockerImageName = Option(System.getenv("HDX_DOCKER_IMAGE"))
-    val endpointUri = Option(System.getenv("HDX_STORAGE_ENDPOINT"))
-
-    val extra = Map() ++
-      endpointUri.map(uri => HdxConnectionInfo.OPT_STORAGE_ENDPOINT_URI -> uri)
-
-    HdxConnectionInfo(jdbcUrl, user, pass, new URI(apiUrl), None, cloudCred1, cloudCred2, dockerImageName, None, None, extra)
-  }
-
   val scalarColumns = HdxValueType.values().toList.filter(vt => vt.isScalar && vt != HdxValueType.DateTime64).map { vt =>
     HdxOutputColumn(
       vt.getHdxName,

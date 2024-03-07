@@ -110,4 +110,25 @@ object HdxConnectionInfo {
     val extra = options - OPT_JDBC_URL - OPT_USERNAME - OPT_PASSWORD - OPT_API_URL - OPT_PARTITION_PREFIX - OPT_CLOUD_CRED_1 - OPT_CLOUD_CRED_2 - OPT_TURBINE_CMD_DOCKER
     HdxConnectionInfo(url, user, pass, apiUrl, partitionPrefix, cloudCred1, cloudCred2, turbineCmdDocker, extraOpts = extra)
   }
+
+  def getRequiredEnv(name: String): String = {
+    Option(System.getenv(name)).getOrElse(sys.error(s"$name is required"))
+  }
+
+  def fromEnv(): HdxConnectionInfo = {
+    val jdbcUrl = getRequiredEnv("HDX_JDBC_URL")
+    val apiUrl = getRequiredEnv("HDX_API_URL")
+    val user = getRequiredEnv("HDX_USER")
+    val pass = getRequiredEnv("HDX_PASSWORD")
+    val cloudCred1 = getRequiredEnv("HDX_CLOUD_CRED_1")
+    val cloudCred2 = Option(System.getenv("HDX_CLOUD_CRED_2"))
+    val dockerImageName = Option(System.getenv("HDX_DOCKER_IMAGE"))
+    val endpointUri = Option(System.getenv("HDX_STORAGE_ENDPOINT"))
+    val partitionPrefix = Option(System.getenv("HDX_STORAGE_PARTITION_PREFIX"))
+
+    val extra = Map() ++
+      endpointUri.map(uri => HdxConnectionInfo.OPT_STORAGE_ENDPOINT_URI -> uri)
+
+    HdxConnectionInfo(jdbcUrl, user, pass, new URI(apiUrl), partitionPrefix, cloudCred1, cloudCred2, dockerImageName, None, None, extra)
+  }
 }

@@ -57,6 +57,5 @@ case class HdxDbPartition(
   memSize: Long,
   rootPath: String,
   shardKey: String,
-  active: Boolean,
   storageId: Option[UUID]
 )

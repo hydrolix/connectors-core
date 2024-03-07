@@ -79,8 +79,11 @@ final class HdxTableCatalog {
         val storages = api.storages().map(storage => storage.uuid -> storage.settings).toMap
         if (storages.isEmpty) {
           sys.error("No storages available from API, and no storage settings provided in configuration")
-        } else {
+        } else if (e.isEmpty) {
           this.storageSettings = storages
+        } else {
+          log.info(s"Using endpoint override ${e.get}")
+          this.storageSettings = storages.map { case (id, storage) => id -> storage.copy(endpoint = e)}
         }
       }
     }
