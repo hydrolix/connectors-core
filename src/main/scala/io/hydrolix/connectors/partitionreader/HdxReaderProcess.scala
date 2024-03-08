@@ -3,7 +3,7 @@ package io.hydrolix.connectors.partitionreader
 import java.io._
 import java.nio.file.Files
 import java.util.Base64
-import java.util.concurrent.CountDownLatch
+import java.util.concurrent.{ConcurrentHashMap, CountDownLatch}
 import java.util.zip.GZIPInputStream
 import scala.collection.mutable
 import scala.sys.process.{Process, ProcessIO}
@@ -54,6 +54,85 @@ object HdxReaderProcess {
     }
   }
 
+  private val tmpDirs = new ConcurrentHashMap[(HdxConnectionInfo, HdxStorageSettings), (File, File, File, Option[File])]()
+
+  def setupTmpDir(info: HdxConnectionInfo, storage: HdxStorageSettings): (File, File, File, Option[File]) = {
+    tmpDirs.computeIfAbsent((info, storage), { case _ =>
+      val hdxReaderRoot = {
+        Files.createTempDirectory("hdx_reader").also { path =>
+          if (!dontDelete) {
+            new RmRfThread(path.toFile).hook()
+          }
+        }.toFile
+      }
+
+      val hdxFs =
+        new File(hdxReaderRoot, HdxFs)
+          .also(_.mkdir())
+
+      val turbineCmd = new File(hdxReaderRoot, "turbine_cmd.exe")
+      Using.Manager { use =>
+        ByteStreams.copy(
+          use(getClass.getResourceAsStream("/linux-x86-64/turbine_cmd")),
+          use(new FileOutputStream(turbineCmd))
+        )
+      }.get
+
+      turbineCmd.setExecutable(true)
+
+      // TODO maybe make this optional or record the success somewhere so we don't need to repeat it constantly
+      spawn(turbineCmd.getAbsolutePath) match {
+        case (255, "", "No command specified") => // OK
+        case (exit, out, err) =>
+          if (info.turbineCmdDockerName.isEmpty) {
+            log.warn(s"turbine_cmd may not work on this OS, it exited with code $exit, stdout: $out, stderr: $err")
+          }
+      }
+
+      log.info(s"Extracted turbine_cmd binary to ${turbineCmd.getAbsolutePath}")
+
+      val turbineIniBefore = TurbineIni(
+        storage,
+        info.cloudCred1,
+        info.cloudCred2,
+        if (info.turbineCmdDockerName.isDefined) s"$DockerPathPrefix/$HdxFs" else hdxFs.getAbsolutePath
+      )
+
+      val (turbineIniAfter, credsTempFile) = if (storage.cloud == "gcp" || storage.cloud == "gcs") {
+        val gcsKeyFile = File.createTempFile("turbine_gcs_key", ".json", hdxReaderRoot)
+
+        val turbineIni = Using.Manager { use =>
+          // For gcs, cloudCred1 is a base64(gzip(gcs_service_account_key.json)) and cloudCred2 is unused
+          val gcsKeyB64 = Base64.getDecoder.decode(info.cloudCred1)
+
+          val gcsKeyBytes = ByteStreams.toByteArray(use(new GZIPInputStream(new ByteArrayInputStream(gcsKeyB64))))
+          use(new FileOutputStream(gcsKeyFile)).write(gcsKeyBytes)
+
+          val gcsKeyPath = if (info.turbineCmdDockerName.isDefined) {
+            s"$DockerPathPrefix/${gcsKeyFile.getName}"
+          } else {
+            gcsKeyFile.getAbsolutePath
+          }
+          val turbineIniWithGcsCredsPath = turbineIniBefore.replace("%CREDS_FILE%", gcsKeyPath)
+
+          turbineIniWithGcsCredsPath
+        }.get
+
+        (turbineIni, Some(gcsKeyFile))
+      } else {
+        // AWS doesn't need any further munging of turbine.ini
+        (turbineIniBefore, None)
+      }
+
+      val turbineIniTmp = File.createTempFile("turbine", ".ini", hdxReaderRoot)
+      resource(new FileOutputStream(turbineIniTmp)) {
+        _.write(turbineIniAfter.getBytes("UTF-8"))
+      }
+
+      (hdxReaderRoot, turbineCmd, turbineIniTmp, credsTempFile)
+    })
+  }
+
   /**
    * Construct a new HdxReaderProcess. It's pretty heavyweight; it creates multiple temp files and spawns a
    * `turbine_cmd hdx_reader` child process, so don't call this unless you're pretty sure it's likely to succeed.
@@ -70,79 +149,7 @@ object HdxReaderProcess {
       HdxOutputColumn(fld.name, scan.hdxCols.getOrElse(fld.name, sys.error(s"No HdxColumnInfo for ${fld.name}")).hdxType)
     }
 
-    val hdxReaderTmp = {
-      Files.createTempDirectory("hdx_reader").also { path =>
-        if (!dontDelete) {
-          new RmRfThread(path.toFile).hook()
-        }
-      }.toFile
-    }
-
-    val turbineCmdTmp =
-      new File(hdxReaderTmp, "turbine_cmd.exe")
-        .also { f =>
-          Using.Manager { use =>
-            ByteStreams.copy(
-              use(getClass.getResourceAsStream("/linux-x86-64/turbine_cmd")),
-              use(new FileOutputStream(f))
-            )
-          }.get
-
-          f.setExecutable(true)
-
-          spawn(f.getAbsolutePath) match {
-            case (255, "", "No command specified") => // OK
-            case (exit, out, err) =>
-              if (info.turbineCmdDockerName.isEmpty) {
-                log.warn(s"turbine_cmd may not work on this OS, it exited with code $exit, stdout: $out, stderr: $err")
-              }
-          }
-
-          log.info(s"Extracted turbine_cmd binary to ${f.getAbsolutePath}")
-        }
-
-    val hdxFsTmp =
-      new File(hdxReaderTmp, HdxFs)
-        .also(_.mkdir())
-
-    val turbineIniBefore = TurbineIni(
-      storage,
-      info.cloudCred1,
-      info.cloudCred2,
-      if (info.turbineCmdDockerName.isDefined) s"$DockerPathPrefix/$HdxFs" else hdxFsTmp.getAbsolutePath
-    )
-
-    val (turbineIniAfter, credsTempFile) = if (storage.cloud == "gcp" || storage.cloud == "gcs") {
-      val gcsKeyFile = File.createTempFile("turbine_gcs_key", ".json", hdxReaderTmp)
-
-      val turbineIni = Using.Manager { use =>
-        // For gcs, cloudCred1 is a base64(gzip(gcs_service_account_key.json)) and cloudCred2 is unused
-        val gcsKeyB64 = Base64.getDecoder.decode(info.cloudCred1)
-
-        val gcsKeyBytes = ByteStreams.toByteArray(use(new GZIPInputStream(new ByteArrayInputStream(gcsKeyB64))))
-        use(new FileOutputStream(gcsKeyFile)).write(gcsKeyBytes)
-
-        val gcsKeyPath = if (info.turbineCmdDockerName.isDefined) {
-          s"$DockerPathPrefix/${gcsKeyFile.getName}"
-        } else {
-          gcsKeyFile.getAbsolutePath
-        }
-        val turbineIniWithGcsCredsPath = turbineIniBefore.replace("%CREDS_FILE%", gcsKeyPath)
-
-        turbineIniWithGcsCredsPath
-      }.get
-
-      (turbineIni, Some(gcsKeyFile))
-    } else {
-      // AWS doesn't need any further munging of turbine.ini
-      (turbineIniBefore, None)
-    }
-
-    // TODO don't create a duplicate file per partition, use a content hash or something
-    lazy val turbineIniTmp = File.createTempFile("turbine", ".ini", hdxReaderTmp)
-    resource(new FileOutputStream(turbineIniTmp)) {
-      _.write(turbineIniAfter.getBytes("UTF-8"))
-    }
+    val (hdxReaderTmp, turbineCmd, turbineIniTmp, credsTempFile) = setupTmpDir(info, storage)
 
     // TODO does anything need to be quoted here?
     //  Note, this relies on a bunch of changes in hdx_reader that may not have been merged to turbine/turbine-core yet,
@@ -187,10 +194,10 @@ object HdxReaderProcess {
           "-a", "STDERR",
           "-v", s"${hdxReaderTmp.getAbsolutePath}:$DockerPathPrefix",
           imageName,
-          s"$DockerPathPrefix/${turbineCmdTmp.getName}"
+          s"$DockerPathPrefix/${turbineCmd.getName}"
         ) ++ turbineCmdArgs
       case None =>
-        turbineCmdTmp.getAbsolutePath +: turbineCmdArgs
+        turbineCmd.getAbsolutePath +: turbineCmdArgs
     }
 
     val stderrLines = mutable.ListBuffer[String]()
