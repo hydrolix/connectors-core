@@ -7,9 +7,9 @@ import java.util.concurrent.{ConcurrentHashMap, CountDownLatch}
 import java.util.zip.GZIPInputStream
 import scala.collection.mutable
 import scala.sys.process.{Process, ProcessIO}
+import scala.util.Using
 import scala.util.Using.resource
 import scala.util.control.Breaks.{break, breakable}
-import scala.util.{Try, Using}
 
 import com.google.common.io.ByteStreams
 import com.typesafe.scalalogging.Logger
@@ -54,10 +54,10 @@ object HdxReaderProcess {
     }
   }
 
-  private val tmpDirs = new ConcurrentHashMap[(HdxConnectionInfo, HdxStorageSettings), (File, File, File, Option[File])]()
+  private val tmpDirs = new ConcurrentHashMap[(HdxConnectionInfo, HdxStorageSettings), (File, File, File)]()
 
-  def setupTmpDir(info: HdxConnectionInfo, storage: HdxStorageSettings): (File, File, File, Option[File]) = {
-    tmpDirs.computeIfAbsent((info, storage), { case _ =>
+  private def setupTmpDir(info: HdxConnectionInfo, storage: HdxStorageSettings): (File, File, File) = {
+    tmpDirs.computeIfAbsent((info, storage), { _ =>
       val hdxReaderRoot = {
         Files.createTempDirectory("hdx_reader").also { path =>
           if (!dontDelete) {
@@ -98,7 +98,7 @@ object HdxReaderProcess {
         if (info.turbineCmdDockerName.isDefined) s"$DockerPathPrefix/$HdxFs" else hdxFs.getAbsolutePath
       )
 
-      val (turbineIniAfter, credsTempFile) = if (storage.cloud == "gcp" || storage.cloud == "gcs") {
+      val turbineIniAfter = if (storage.cloud == "gcp" || storage.cloud == "gcs") {
         val gcsKeyFile = File.createTempFile("turbine_gcs_key", ".json", hdxReaderRoot)
 
         val turbineIni = Using.Manager { use =>
@@ -118,10 +118,10 @@ object HdxReaderProcess {
           turbineIniWithGcsCredsPath
         }.get
 
-        (turbineIni, Some(gcsKeyFile))
+        turbineIni
       } else {
         // AWS doesn't need any further munging of turbine.ini
-        (turbineIniBefore, None)
+        turbineIniBefore
       }
 
       val turbineIniTmp = File.createTempFile("turbine", ".ini", hdxReaderRoot)
@@ -129,7 +129,7 @@ object HdxReaderProcess {
         _.write(turbineIniAfter.getBytes("UTF-8"))
       }
 
-      (hdxReaderRoot, turbineCmd, turbineIniTmp, credsTempFile)
+      (hdxReaderRoot, turbineCmd, turbineIniTmp)
     })
   }
 
@@ -149,7 +149,7 @@ object HdxReaderProcess {
       HdxOutputColumn(fld.name, scan.hdxCols.getOrElse(fld.name, sys.error(s"No HdxColumnInfo for ${fld.name}")).hdxType)
     }
 
-    val (hdxReaderTmp, turbineCmd, turbineIniTmp, credsTempFile) = setupTmpDir(info, storage)
+    val (hdxReaderTmp, turbineCmd, turbineIniTmp) = setupTmpDir(info, storage)
 
     // TODO does anything need to be quoted here?
     //  Note, this relies on a bunch of changes in hdx_reader that may not have been merged to turbine/turbine-core yet,
@@ -221,14 +221,12 @@ object HdxReaderProcess {
       )
     )
 
-    new HdxReaderProcess(child, stderrLines, turbineIniTmp, credsTempFile)
+    new HdxReaderProcess(child, stderrLines)
   }
 }
 
 final class HdxReaderProcess(           process: Process,
-                             val    stderrLines: mutable.ListBuffer[String],
-                                  turbineIniTmp: File,
-                                  credsTempFile: Option[File])
+                             val    stderrLines: mutable.ListBuffer[String])
 {
   import HdxReaderProcess._
 
@@ -253,16 +251,9 @@ final class HdxReaderProcess(           process: Process,
   }
 
   def close(): Unit = {
-    try {
-      if (process.isAlive()) {
-        log.info("Child process is still alive; killing")
-        process.destroy()
-      }
-    } finally {
-      if (!dontDelete) {
-        Try(turbineIniTmp.delete())
-        credsTempFile.foreach(f => Try(f.delete()))
-      }
+    if (process.isAlive()) {
+      log.info("Child process is still alive; killing")
+      process.destroy()
     }
   }
 }

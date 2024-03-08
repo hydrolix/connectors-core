@@ -17,10 +17,22 @@
 package io.hydrolix.connectors
 
 import java.io.File
+import java.nio.file.FileSystemException
 
 import com.google.common.io.{MoreFiles, RecursiveDeleteOption}
+import com.typesafe.scalalogging.Logger
 
 class RmRfThread(file: File) extends Thread {
-  override def run(): Unit = MoreFiles.deleteRecursively(file.toPath, RecursiveDeleteOption.ALLOW_INSECURE)
+  private val log = Logger(getClass)
+
+  override def run(): Unit = {
+    try {
+      MoreFiles.deleteRecursively(file.toPath, RecursiveDeleteOption.ALLOW_INSECURE)
+    } catch {
+      case _: FileSystemException =>
+        log.warn(s"Couldn't delete ${file.toPath}, you may want to clean it up yourself!")
+      // all other exceptions can propagate
+    }
+  }
   def hook(): Unit = Runtime.getRuntime.addShutdownHook(this)
 }
