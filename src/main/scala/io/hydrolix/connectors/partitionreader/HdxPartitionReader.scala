@@ -28,7 +28,7 @@ import io.hydrolix.connectors.{HdxConnectionInfo, HdxPartitionScanPlan}
 /**
  * Grab `iterator` to consume data. It blocks the calling thread!
  */
-abstract class HdxPartitionReader[T >: Null <: AnyRef](doneSignal: T, outputFormat: String) {
+abstract class HdxPartitionReader[T >: Null <: AnyRef](val doneSignal: T, outputFormat: String) {
   private val log = Logger(getClass)
 
   val info: HdxConnectionInfo

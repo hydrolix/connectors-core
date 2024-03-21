@@ -30,7 +30,7 @@ final class RowPartitionReader[T >: Null <: AnyRef](         val           info:
                                                              val        storage: HdxStorageSettings,
                                                              val           scan: HdxPartitionScanPlan,
                                                              val          parse: RowAdapter[T, _, _],
-                                                             val     doneSignal: T)
+                                                    override val     doneSignal: T)
   extends HdxPartitionReader[T](doneSignal, "json")
 {
   override def handleStdout(stdout: InputStream): Unit = {
