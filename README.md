@@ -154,6 +154,14 @@ and cloud storage. We should add integrations to retrieve credentials from vario
 
 ## Changelog
 
+### 1.5.0
+* The S3 endpoint URL can now be overridden
+* Catalog queries now use time/shard-key predicates from the query, where applicable
+* Partition pruning is now more conservative and hopefully more accurate
+* Switched from directly using slf4j to typesafe-logging wrapper, so debug logging in fast paths is cheap
+* Refactored and simplified HdxPartitionReader, and made it lazy so erroneous queries that aren't caught until later are 
+  still cheap
+
 ### 1.3.1
 * Race condition bug fix in HdxPartitionReader 
 
