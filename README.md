@@ -125,7 +125,7 @@ different way of setting configuration parameters, but their meaning will always
 | Username           | Email address     | Username needed to login to the Hydrolix cluster; normally an email address                                                                                                                                         |
 | Password           | String            | Password needed to login to the Hydrolix cluster                                                                                                                                                                    |
 | Cloud Credential 1 | String            | First cloud credential. What to put here depends on the specific vendor, e.g.:<ul><li>AWS: Access Key ID</li><li>GCS: Service Account Key file, gzipped then base64'd</li><li>Azure: Service Account Name</li></ul> |
-| Cloud Credential 2 | String (optional) | Second cloud credential. <ul><li>GCS: not used</li><li>AWS: secret access key</li><li>Azure: Shared Key</li></ul>                                                                                                   |
+| Cloud Credential 2 | String (optional) | Second cloud credential. <ul><li>GCS: (not used)</li><li>AWS: Secret Access Key</li><li>Azure: Shared Key</li></ul>                                                                                                 |
 | Docker Image Name  | String (optional) | Name of a Docker image to use when launching the `turbine_cmd hdx_reader` child process.                                                                                                                            |
 
 You can try running [ConnectorSmokeTest](./src/test/scala/io/hydrolix/connectors/ConnectorSmokeTest.scala) with 
