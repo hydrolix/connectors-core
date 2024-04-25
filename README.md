@@ -154,6 +154,11 @@ and cloud storage. We should add integrations to retrieve credentials from vario
 
 ## Changelog
 
+### 1.5.1 (unreleased)
+* When the Hydrolix API [storage object](https://docs.hydrolix.io/reference/list-storages) doesn't contain an endpoint 
+  URL, we now set `fs.http.ssl.enabled = true` in `turbine.ini`, which makes connectors more reliable Azure storage 
+  is used. 
+
 ### 1.5.0
 * The S3 endpoint URL can now be overridden
 * Catalog queries now use time/shard-key predicates from the query, where applicable
