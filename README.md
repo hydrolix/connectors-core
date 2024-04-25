@@ -109,8 +109,8 @@ The library can _work_ on other OS's (including macOS) via Docker, but we don't 
    ```
 3. Run `sbt -J-Xmx4g +publishLocal` to compile and build the connectors-core jar files (for Scala 2.12 and 2.13)
 4. If the build succeeds, the jars can be found at:
-   * [./target/scala-2.12/hydrolix-connectors-core_2.12-1.3.1-SNAPSHOT.jar](./target/scala-2.12/hydrolix-connectors-core_2.12-1.3.1-SNAPSHOT.jar).
-   * [./target/scala-2.13/hydrolix-connectors-core_2.13-1.3.1-SNAPSHOT.jar](./target/scala-2.13/hydrolix-connectors-core_2.13-1.3.1-SNAPSHOT.jar).
+   * [./target/scala-2.12/hydrolix-connectors-core_2.12-1.5.2-SNAPSHOT.jar](./target/scala-2.12/hydrolix-connectors-core_2.12-1.5.2-SNAPSHOT.jar).
+   * [./target/scala-2.13/hydrolix-connectors-core_2.13-1.5.2-SNAPSHOT.jar](./target/scala-2.13/hydrolix-connectors-core_2.13-1.5.2-SNAPSHOT.jar).
 
 ## Configuration
 
@@ -118,15 +118,15 @@ In its current form, this library has no entry point, since it's designed to be 
 connectors. However, we'll summarize the configuration here; every connector based on this library will have a 
 different way of setting configuration parameters, but their meaning will always be the same:
 
-| Name               | Type              | Description                                                                                                                                                         |
-|--------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| API URL            | URL               | HTTP(s) URL of the Hydrolix API; normally ends with `/config/v1/` (including trailing slash)                                                                        |
-| JDBC URL           | JDBC URL          | JDBC URL of the Hydrolix query head, e.g. `jdbc:clickhouse://hdx.example.com:8088/_local?ssl=true.                                                                  |
-| Username           | Email address     | Username needed to login to the Hydrolix cluster; normally an email address                                                                                         |
-| Password           | String            | Password needed to login to the Hydrolix cluster                                                                                                                    |
-| Cloud Credential 1 | String            | First cloud credential. What to put here depends on the specific vendor, e.g.:<br/> * AWS: Access Key ID<br/>* GCS: Service Account Key file, gzipped then base64'd |
-| Cloud Credential 2 | String (optional) | Second cloud credential. Not used for GCS; secret key for AWS                                                                                                       |
-| Docker Image Name  | String (optional) | Name of a Docker image to use when launching the `turbine_cmd hdx_reader` child process.                                                                            |
+| Name               | Type              | Description                                                                                                                                                                                                         |
+|--------------------|-------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| API URL            | URL               | HTTP(s) URL of the Hydrolix API; normally ends with `/config/v1/` (including trailing slash)                                                                                                                        |
+| JDBC URL           | JDBC URL          | JDBC URL of the Hydrolix query head, e.g. `jdbc:clickhouse://hdx.example.com:8088/_local?ssl=true.                                                                                                                  |
+| Username           | Email address     | Username needed to login to the Hydrolix cluster; normally an email address                                                                                                                                         |
+| Password           | String            | Password needed to login to the Hydrolix cluster                                                                                                                                                                    |
+| Cloud Credential 1 | String            | First cloud credential. What to put here depends on the specific vendor, e.g.:<ul><li>AWS: Access Key ID</li><li>GCS: Service Account Key file, gzipped then base64'd</li><li>Azure: Service Account Name</li></ul> |
+| Cloud Credential 2 | String (optional) | Second cloud credential. <ul><li>GCS: not used</li><li>AWS: secret access key</li><li>Azure: Shared Key</li></ul>                                                                                                   |
+| Docker Image Name  | String (optional) | Name of a Docker image to use when launching the `turbine_cmd hdx_reader` child process.                                                                                                                            |
 
 You can try running [ConnectorSmokeTest](./src/test/scala/io/hydrolix/connectors/ConnectorSmokeTest.scala) with 
 meaningful environment variables to check your configuration  

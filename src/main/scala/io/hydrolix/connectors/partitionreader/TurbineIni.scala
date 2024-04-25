@@ -39,17 +39,17 @@ object TurbineIni {
     val (creds, storageInfo) = storage.cloud match {
       case "gcp" | "gcs" =>
         (
-          """# GCS credentials
+          """### Connectors: GCS credentials
             |fs.gcs.credentials.method = service_account
-            |fs.gcs.credentials.json_credentials_file = %CREDS_FILE%
-            |""".stripMargin,
+            |fs.gcs.credentials.json_credentials_file = %CREDS_FILE%"""
+            .stripMargin,
 
-          s"""# GCS storage info
+          s"""### Connectors: GCS storage info
              |fs.id.default.type = gcs
              |fs.id.default.gcs.region = ${storage.region}
              |fs.id.default.gcs.storage.bucket_name = ${storage.bucketName}
-             |fs.id.default.gcs.storage.bucket_path = ${storage.bucketPath}
-             |""".stripMargin
+             |fs.id.default.gcs.storage.bucket_path = ${storage.bucketPath}"""
+            .stripMargin
         )
 
       case "aws" =>
@@ -57,33 +57,31 @@ object TurbineIni {
           .map(url => s"fs.id.default.aws.s3.endpoint = $url\n")
           .getOrElse("\n")
         (
-          s"""# AWS credentials
+          s"""### Connectors: AWS credentials
              |fs.aws.credentials.method = static
              |fs.aws.credentials.access_key = $cloudCred1
-             |fs.aws.credentials.secret_key = ${cloudCred2.getOrElse(sys.error("cloud_cred_2 is required for AWS"))}
-             |""".stripMargin,
+             |fs.aws.credentials.secret_key = ${cloudCred2.getOrElse(sys.error("cloud_cred_2 is required for AWS"))}"""
+            .stripMargin,
 
-          s"""# AWS storage info
+          s"""### Connectors: AWS storage info
              |fs.id.default.type = s3
              |fs.id.default.aws.region = ${storage.region}
              |fs.id.default.aws.s3.bucket_name = ${storage.bucketName}
-             |fs.id.default.aws.s3.bucket_path = ${storage.bucketPath}
-             |""".stripMargin + endpointUrlOverride
+             |fs.id.default.aws.s3.bucket_path = ${storage.bucketPath}"""
+            .stripMargin + endpointUrlOverride
         )
 
       case "azure" =>
         (
-          s"""# Azure credentials
+          s"""### Connectors: Azure credentials
              |fs.azure.credentials.account_name = $cloudCred1
-             |fs.azure.credentials.shared_key = ${cloudCred2.getOrElse(sys.error("cloud_cred_2 is required for Azure"))}
-             |
-             |""".stripMargin,
-          s"""# Azure storage info
+             |fs.azure.credentials.shared_key = ${cloudCred2.getOrElse(sys.error("cloud_cred_2 is required for Azure"))}"""
+            .stripMargin,
+          s"""### Connectors: Azure storage info
              |fs.id.default.type = azure
              |fs.id.default.azure.storage.container_name = ${storage.bucketName}
-             |fs.id.default.azure.storage.container_path = ${storage.bucketPath}
-             |
-             |""".stripMargin
+             |fs.id.default.azure.storage.container_path = ${storage.bucketPath}"""
+            .stripMargin
         )
 
       case other =>
@@ -94,9 +92,17 @@ object TurbineIni {
         )
     }
 
+    val sslEnabled = if (storage.endpoint.isDefined) {
+      ""
+    } else {
+      """### Connectors: enable SSL when storage endpoint URL isn't defined
+        |fs.http.ssl.enabled = true""".stripMargin
+    }
+
     template
       .replace("%CLOUD_CREDS%", creds)
       .replace("%CLOUD_STORAGE_INFO%", storageInfo)
       .replace("%TMP_HDXFS%", hdxFsPath)
+      .replace("%HTTP_SSL_ENABLED%", sslEnabled)
   }
 }
