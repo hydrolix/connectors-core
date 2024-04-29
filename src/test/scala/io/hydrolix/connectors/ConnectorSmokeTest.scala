@@ -27,7 +27,7 @@ import io.hydrolix.connectors.expr._
 import io.hydrolix.connectors.partitionreader.RowPartitionReader
 import io.hydrolix.connectors.types.{StructField, StructType, TimestampType}
 
-//noinspection ZeroIndexToHead
+//noinspection ZeroIndexToHead,SameParameterValue
 class ConnectorSmokeTest {
   private val logger = Logger(getClass)
 
@@ -43,7 +43,7 @@ class ConnectorSmokeTest {
   @Ignore("Requires environment variables not always available")
   @Test
   def doStuff(): Unit = {
-    val reader = partitionReader()
+    val reader = partitionReader("hydro", "logs", 5L)
     logger.info("Timestamp values from first partition:")
     reader.iterator.forEachRemaining { row =>
       logger.info(row.values(0).toString)
@@ -53,22 +53,22 @@ class ConnectorSmokeTest {
   @Ignore("Requires environment variables not always available")
   @Test
   def doNothing(): Unit = {
-    val reader = partitionReader()
+    val reader = partitionReader("hydro", "logs", 5L)
     val xx = reader.iterator
     // TODO maybe there's some way to detect this...
     logger.info(s"hopefully no child process was launched here: $xx")
   }
 
-  private def partitionReader() = {
+  private def partitionReader(dbName: String, tableName: String, maxAge: Long) = {
     val info = HdxConnectionInfo.fromEnv()
 
     val catalog = new HdxTableCatalog()
     catalog.initialize("hdx-test", info.asMap)
 
-    val table = catalog.loadTable(List("hydro", "logs"))
+    val table = catalog.loadTable(List(dbName, tableName))
 
     val now = Instant.now()
-    val fiveMinutesAgo = now.minus(5L, ChronoUnit.MINUTES)
+    val fiveMinutesAgo = now.minus(maxAge, ChronoUnit.MINUTES)
 
     val getTimestamp = expr.GetField(table.primaryKeyField, TimestampType(3))
 
@@ -77,7 +77,7 @@ class ConnectorSmokeTest {
       LessEqual(getTimestamp, TimestampLiteral(now))
     )
 
-    val partitions = HdxPushdown.planPartitions(info, HdxJdbcSession(info), table, StructType(List(StructField("timestamp", TimestampType(3)))), List(pred))
+    val partitions = HdxPushdown.planPartitions(info, HdxJdbcSession(info), table, StructType(List(StructField(table.primaryKeyField, TimestampType(3)))), List(pred))
 
     logger.info(s"${partitions.size} partitions containing data with ${table.primaryKeyField} >= $fiveMinutesAgo: ${partitions.mkString("\n  ", "\n  ", "")}")
 
